@@ -7,7 +7,7 @@ function App() {
         <Navbar.Brand>Transvirex Logistics</Navbar.Brand>
       </Navbar>
       <i className="bi bi-house" />
-      <Button variant="primary">Click me</Button>
+      <Button variant="primary">asdkajsd</Button>
     </Container>
   );
 }

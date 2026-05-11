@@ -1,11 +1,11 @@
 from fastapi import FastAPI
 
-app = FastAPI(title="Transvirex Logistics API")
+app = FastAPI(title="Transvirex Auth Service")
 
 
 @app.get("/")
 def root():
-    return {"status": "ok", "service": "transvirex logistics"}
+    return {"service": "auth", "status": "ok"}
 
 
 @app.get("/health")

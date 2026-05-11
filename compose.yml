@@ -1,11 +1,28 @@
 services:
-  db:
+  auth_db:
     image: postgres:17-alpine
-    container_name: db
     environment:
-      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_USER: ${AUTH_DB_USER}
+      POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD}
+      POSTGRES_DB: authentication
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - auth_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${AUTH_DB_USER} -d authentication"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  auth:
+    build: ./backend/services/auth
+    environment:
+      DATABASE_URL: postgresql+psycopg://${AUTH_DB_USER}:${AUTH_DB_PASSWORD}@auth_db:5432/authentication
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      auth_db:
+        condition: service_healthy
+    ports:
+      - "8001:8000"
 
 volumes:
-  pgdata:
+  auth_pgdata:
