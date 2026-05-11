@@ -103,11 +103,11 @@ auth-psql:
 	$(COMPOSE) exec auth_db psql -U $$AUTH_DB_USER -d authentication
 
 migrate:
-	$(COMPOSE) exec auth uv run alembic upgrade head
+	$(COMPOSE) exec auth alembic upgrade head
 
 migrate-create:
 	@if [ -z "$(m)" ]; then echo "Usage: make migrate-create m='your message'"; exit 1; fi
-	$(COMPOSE) exec auth uv run alembic revision --autogenerate -m "$(m)"
+	$(COMPOSE) exec auth alembic revision --autogenerate -m "$(m)"
 
 test:
 	cd $(AUTH_DIR) && uv run pytest

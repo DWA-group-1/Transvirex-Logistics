@@ -23,6 +23,18 @@ services:
         condition: service_healthy
     ports:
       - "8001:8000"
+    volumes:
+      - ./backend/services/auth/:/app:Z
+    command:
+      [
+        "uvicorn",
+        "app.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--reload",
+      ]
 
 volumes:
   auth_pgdata:
