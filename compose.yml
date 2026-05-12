@@ -1,4 +1,5 @@
 services:
+  # ─── PostgreSQL - AuthDB ────────────────────────────────────────────────────────────
   auth_db:
     image: postgres:17-alpine
     environment:
@@ -7,12 +8,14 @@ services:
       POSTGRES_DB: authentication
     volumes:
       - auth_pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${AUTH_DB_USER} -d authentication"]
       interval: 5s
       timeout: 3s
       retries: 5
-
+  # ─── Auth Service ──────────────────────────────────────────────────────────
   auth:
     build: ./backend/services/auth
     environment:
@@ -35,6 +38,16 @@ services:
         "8000",
         "--reload",
       ]
+
+  # ─── Frontend ──────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
 
 volumes:
   auth_pgdata:
