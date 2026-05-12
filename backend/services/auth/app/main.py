@@ -20,7 +20,7 @@ async def lifespan(app: FastAPI):
 
     yield
 
-app = FastAPI(title="Auth Service", version="1.0.0")
+app = FastAPI(title="Auth Service", version="1.0.0", lifespan=lifespan)
 
 # Allow all origins so the frontend and todo-service can call this API
 app.add_middleware(
