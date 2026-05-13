@@ -1,14 +1,6 @@
 import { useState } from "react";
 import { Button, Col, Container, Nav, Offcanvas, Row } from "react-bootstrap";
 
-const navItems = [
-  { label: "Dashboard", icon: "bi-speedometer2" },
-  { label: "Track Orders", icon: "bi-truck" },
-  { label: "Plan Routes", icon: "bi-map" },
-  { label: "Invoices", icon: "bi-currency-dollar" },
-  { label: "Settings", icon: "bi-gear" },
-];
-
 {/*
   SHOWS THE MAIN dashboard after login. ADJUSTS TO MOBILE AND DESKTOP.
 */}
