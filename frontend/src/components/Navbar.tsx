@@ -94,11 +94,11 @@ function Navbar() {
                   className="me-2"
                   alt="Logo"
                   style={{ 
-                    filter: 'brightness(0) invert(1)', // Makes logo white to contrast with terracotta
+                    filter: 'none', // Logo stays original green color - NO filter applied!
                   }}
                 />
                 <span className="fw-bold" style={{ 
-                  color: '#ffffff', // White text
+                  color: '#ffffff', // White text for contrast against terracotta
                   fontSize: '1.2rem'
                 }}>
                   Transvirex Logistics
@@ -154,7 +154,7 @@ function Navbar() {
         </Container>
       </BootstrapNavbar>
 
-      {/* Offcanvas Menu - with neutral colors that work with terracotta navbar */}
+      {/* Offcanvas Menu */}
       <Offcanvas 
         show={showMenu} 
         onHide={handleClose} 
