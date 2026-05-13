@@ -14,38 +14,45 @@ function Navbar() {
   };
 
   return (
-    <BootstrapNavbar bg="dark" variant="dark" expand="lg">
-      <Container>
-        {/* LOGO AND WEBSITE NAME */}
-        <BootstrapNavbar.Brand as={Link} to="/home">
-          <img
-            src="leaf-svgrepo-com.svg"  
-            height="75"     
-            className="d-inline-block align-middle"
-            alt="Logo"
-          /> 
-          <span className="ms-2 text-light">Transvirex Logistics</span>
-        </BootstrapNavbar.Brand>
-      
-        {/* SEARCH BAR */}
-        <Form onSubmit={handleSearch} className="d-flex ms-auto me-2">
-          <Form.Control
-            type="search"
-            placeholder="Search..."
-            className="me-2"
-            aria-label="Search Bar"
-            value={searchTerm}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}  // ← Add type here too
-          />
-          <Button type="submit" variant="success">
-            <i className="bi bi-search"></i>
-          </Button>
-        </Form>
-
-        {/* SETTINGS BUTTON */}
-        <Button variant="info">
-          <i className="bi bi-gear-wide"></i>
+    <BootstrapNavbar bg="dark" variant="dark">
+      <Container fluid className="position-relative d-flex align-items-center py-2">
+        <Button variant="outline-light" className="me-2" aria-label="Open navigation menu">
+          <i className="bi bi-list"></i>
         </Button>
+
+        <BootstrapNavbar.Brand
+          as={Link}
+          to="/home"
+          className="position-absolute start-50 translate-middle-x d-flex align-items-center justify-content-center"
+        >
+          <img
+            src="leaf-svgrepo-com.svg"
+            height="40"
+            className="me-2"
+            alt="Logo"
+          />
+          <span className="text-light fw-bold">Transvirex Logistics</span>
+        </BootstrapNavbar.Brand>
+
+        <div className="ms-auto d-flex align-items-center gap-2">
+          <Form onSubmit={handleSearch} className="d-flex">
+            <Form.Control
+              type="search"
+              placeholder="Search..."
+              className="me-2"
+              aria-label="Search Bar"
+              value={searchTerm}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
+            />
+            <Button type="submit" variant="success">
+              <i className="bi bi-search"></i>
+            </Button>
+          </Form>
+
+          <Button variant="info">
+            <i className="bi bi-gear-wide"></i>
+          </Button>
+        </div>
       </Container>
     </BootstrapNavbar>
   );

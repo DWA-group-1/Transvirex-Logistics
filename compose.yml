@@ -48,21 +48,24 @@ services:
     restart: unless-stopped
     ports:
       - "5173:5173"
-    # 🔥 ADD THESE FOR LIVE RELOADING 🔥
+    # 🔥 OPTIMIZED VOLUME MOUNTING FOR LIVE RELOADING 🔥
     volumes:
-      - ./frontend:/app                    # Sync local frontend code to container
-      - /app/node_modules                  # Preserve container's node_modules (don't sync)
-      - /app/.vite                         # Preserve Vite cache (if using Vite)
-      - /app/dist                          # Preserve build output (if any)
+      - ./frontend:/app:cached                    # Use cached mounting for better performance
+      - /app/node_modules                         # Preserve container's node_modules
+      - /app/.vite                                # Preserve Vite cache
+      - /app/dist                                 # Preserve build output
+      - /app/.npm                                 # Exclude npm cache
+      - /app/.cache                               # Exclude various cache directories
     environment:
-      - CHOKIDAR_USEPOLLING=true           # Enable file polling for Docker
-      - WATCHPACK_POLLING=true             # For webpack-based setups
-      - VITE_DEV_SERVER_HOST=0.0.0.0       # Bind to all interfaces (for Vite)
-      - VITE_DEV_SERVER_PORT=5173          # Explicit port for Vite
-      - NODE_ENV=development               # Run in development mode
-    stdin_open: true                       # Keep stdin open for React/Vite
-    tty: true                              # Allocate a pseudo-TTY
-    command: npm run dev -- --host 0.0.0.0 # Ensure Vite accepts external connections
+      - CHOKIDAR_USEPOLLING=true                  # Enable file polling for Docker
+      - WATCHPACK_POLLING=true                    # For webpack-based setups
+      - VITE_DEV_SERVER_HOST=0.0.0.0              # Bind to all interfaces (for Vite)
+      - VITE_DEV_SERVER_PORT=5173                 # Explicit port for Vite
+      - NODE_ENV=development                      # Run in development mode
+      - WATCHPACK_POLLING_INTERVAL=1000           # Poll every second
+    stdin_open: true                              # Keep stdin open for React/Vite
+    tty: true                                     # Allocate a pseudo-TTY
+    command: npm run dev -- --host 0.0.0.0        # Ensure Vite accepts external connections
 
 volumes:
   auth_pgdata:
