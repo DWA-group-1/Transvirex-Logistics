@@ -1,6 +1,6 @@
 import { Container, Navbar as BootstrapNavbar, Button } from "react-bootstrap";
 import { Link } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Nav, Offcanvas } from "react-bootstrap";
 
 const navItems = [
@@ -13,42 +13,53 @@ const navItems = [
 
 function Navbar() {
   const [showMenu, setShowMenu] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const savedMode = localStorage.getItem('darkMode');
-    return savedMode !== null ? savedMode === 'true' : true;
+  const [fontSize, setFontSize] = useState(() => {
+    // Get saved font size from localStorage or default to 100%
+    const savedSize = localStorage.getItem('fontSize');
+    return savedSize ? parseInt(savedSize) : 100;
   });
   
   const handleClose = () => setShowMenu(false);
   const handleShow = () => setShowMenu(true);
 
-  const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
+  // Function to increase text size (max 150%)
+  const increaseFontSize = () => {
+    if (fontSize < 150) {
+      const newSize = fontSize + 10;
+      setFontSize(newSize);
+      document.body.style.fontSize = `${newSize}%`;
+      localStorage.setItem('fontSize', newSize.toString());
+    }
   };
 
-  // Apply theme to body when isDarkMode changes
-  useEffect(() => {
-    if (isDarkMode) {
-      document.body.classList.add('bg-dark', 'text-light');
-      document.body.classList.remove('bg-light', 'text-dark');
-      localStorage.setItem('darkMode', 'true');
-    } else {
-      document.body.classList.add('bg-light', 'text-dark');
-      document.body.classList.remove('bg-dark', 'text-light');
-      localStorage.setItem('darkMode', 'false');
+  // Function to decrease text size (min 70%)
+  const decreaseFontSize = () => {
+    if (fontSize > 70) {
+      const newSize = fontSize - 10;
+      setFontSize(newSize);
+      document.body.style.fontSize = `${newSize}%`;
+      localStorage.setItem('fontSize', newSize.toString());
     }
-  }, [isDarkMode]);
+  };
 
-  // Navbar colors are OPPOSITE of the theme
-  const navbarIsDark = !isDarkMode; // When dark mode is ON, navbar is LIGHT
+  // Function to reset text size to default
+  const resetFontSize = () => {
+    setFontSize(100);
+    document.body.style.fontSize = '100%';
+    localStorage.setItem('fontSize', '100');
+  };
+
+  // Apply saved font size on component mount
+  useState(() => {
+    document.body.style.fontSize = `${fontSize}%`;
+  }, []);
 
   return (
     <>
       <BootstrapNavbar 
-        bg={navbarIsDark ? "dark" : "light"} 
-        variant={navbarIsDark ? "dark" : "light"} 
         expand="lg"
         style={{
-          backgroundColor: navbarIsDark ? '#212529' : '#f8f9fa',
+          backgroundColor: '#E2725B', // Terracotta color
           transition: 'background-color 0.3s ease'
         }}
       >
@@ -58,9 +69,13 @@ function Navbar() {
             {/* LEFT COLUMN - Burger menu */}
             <div className="flex-grow-1" style={{ flex: 1 }}>
               <Button 
-                variant={navbarIsDark ? "outline-light" : "outline-dark"} 
+                variant="outline-light" 
                 onClick={handleShow}
                 aria-label="Open navigation menu"
+                style={{
+                  borderColor: 'white',
+                  color: 'white'
+                }}
               >
                 <i className="bi bi-list"></i>
               </Button>
@@ -79,38 +94,58 @@ function Navbar() {
                   className="me-2"
                   alt="Logo"
                   style={{ 
-                    // Logo stays GREEN in both modes - NO filter applied!
-                    filter: 'none'
+                    filter: 'brightness(0) invert(1)', // Makes logo white to contrast with terracotta
                   }}
                 />
                 <span className="fw-bold" style={{ 
-                  // Text color adapts to navbar background for contrast
-                  color: navbarIsDark ? '#ffffff' : '#000000'
+                  color: '#ffffff', // White text
+                  fontSize: '1.2rem'
                 }}>
                   Transvirex Logistics
                 </span>
               </BootstrapNavbar.Brand>
             </div>
 
-            {/* RIGHT COLUMN - Dark/Light Mode Toggle Button */}
+            {/* RIGHT COLUMN - Accessibility Text Size Controls */}
             <div className="flex-grow-1" style={{ flex: 1 }}>
-              <div className="d-flex justify-content-end">
+              <div className="d-flex justify-content-end gap-2">
                 <Button 
-                  variant={navbarIsDark ? "outline-light" : "outline-dark"}
-                  onClick={toggleTheme}
-                  aria-label="Toggle dark/light mode"
+                  variant="outline-light"
+                  onClick={decreaseFontSize}
+                  aria-label="Decrease text size"
+                  style={{
+                    borderColor: 'white',
+                    color: 'white'
+                  }}
                 >
-                  {isDarkMode ? (
-                    <>
-                      <i className="bi bi-sun-fill me-1"></i>
-                      <span className="d-none d-md-inline">Light Mode</span>
-                    </>
-                  ) : (
-                    <>
-                      <i className="bi bi-moon-fill me-1"></i>
-                      <span className="d-none d-md-inline">Dark Mode</span>
-                    </>
-                  )}
+                  <i className="bi bi-dash-circle me-1"></i>
+                  <span className="d-none d-md-inline">A-</span>
+                </Button>
+                
+                <Button 
+                  variant="outline-light"
+                  onClick={resetFontSize}
+                  aria-label="Reset text size to default"
+                  style={{
+                    borderColor: 'white',
+                    color: 'white'
+                  }}
+                >
+                  <i className="bi bi-arrow-repeat me-1"></i>
+                  <span className="d-none d-md-inline">Reset</span>
+                </Button>
+                
+                <Button 
+                  variant="outline-light"
+                  onClick={increaseFontSize}
+                  aria-label="Increase text size"
+                  style={{
+                    borderColor: 'white',
+                    color: 'white'
+                  }}
+                >
+                  <i className="bi bi-plus-circle me-1"></i>
+                  <span className="d-none d-md-inline">A+</span>
                 </Button>
               </div>
             </div>
@@ -119,14 +154,14 @@ function Navbar() {
         </Container>
       </BootstrapNavbar>
 
-      {/* Offcanvas Menu - follows the actual theme */}
+      {/* Offcanvas Menu - with neutral colors that work with terracotta navbar */}
       <Offcanvas 
         show={showMenu} 
         onHide={handleClose} 
         placement="start" 
-        className={isDarkMode ? "bg-dark text-light" : "bg-light text-dark"}
+        className="bg-dark text-light"
       >
-        <Offcanvas.Header closeButton closeVariant={isDarkMode ? "white" : "black"}>
+        <Offcanvas.Header closeButton closeVariant="white">
           <Offcanvas.Title>Menu</Offcanvas.Title>
         </Offcanvas.Header>
         <Offcanvas.Body>
@@ -135,8 +170,11 @@ function Navbar() {
               <Nav.Link
                 key={item.label}
                 href={`#${item.label.toLowerCase()}`}
-                className={`py-3 border-bottom ${isDarkMode ? 'text-light' : 'text-dark'}`}
+                className="text-white py-3 border-bottom"
                 onClick={handleClose}
+                style={{
+                  borderBottomColor: '#E2725B' // Terracotta accent on borders
+                }}
               >
                 <i className={`bi ${item.icon} me-2`} />
                 {item.label}
