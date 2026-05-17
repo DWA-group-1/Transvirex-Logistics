@@ -22,7 +22,7 @@ function Navbar() {
   const handleClose = () => setShowMenu(false);
   const handleShow = () => setShowMenu(true);
 
-  // Function to increase text size (max 150%)
+ // FUNCTION TO INCREASE THE FONT SIZE FOR PLUS BUTTON
   const increaseFontSize = () => {
     if (fontSize < 150) {
       const newSize = fontSize + 10;
@@ -32,7 +32,7 @@ function Navbar() {
     }
   };
 
-  // Function to decrease text size (min 70%)
+  // FUNCTION THAT DECREASES THE FONT SIZE FOR MINUS BUTTON
   const decreaseFontSize = () => {
     if (fontSize > 70) {
       const newSize = fontSize - 10;
@@ -42,7 +42,7 @@ function Navbar() {
     }
   };
 
-  // Function to reset text size to default
+  // FUNCTION TO RESET TEXT SIZE TO DEFAULT
   const resetFontSize = () => {
     setFontSize(100);
     document.body.style.fontSize = '100%';
@@ -94,7 +94,7 @@ function Navbar() {
                   className="me-2"
                   alt="Logo"
                   style={{ 
-                    filter: 'none', // Logo stays original green color - NO filter applied!
+                    filter: 'none', 
                   }}
                 />
                 <span className="fw-bold" style={{ 
