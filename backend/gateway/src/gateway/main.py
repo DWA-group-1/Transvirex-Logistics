@@ -24,7 +24,7 @@ def filter_headers(headers):
 
 
 @app.get("/health")
-def root():
+def health():
     return {"status": "ok"}
 
 
@@ -37,15 +37,23 @@ async def proxy(prefix: str, path: str, request: Request):
     target_url = f"{SERVICES[prefix]}/{path}"
 
     headers = filter_headers(request.headers)
+    timeout = httpx.Timeout(30.0, connect=5.0)
 
-    async with httpx.AsyncClient() as client:
-        upstream_response = await client.request(
-            method=request.method,
-            url=target_url,
-            content=await request.body(),
-            params=request.query_params,
-            headers=headers,
-        )
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            upstream_response = await client.request(
+                method=request.method,
+                url=target_url,
+                content=await request.body(),
+                params=request.query_params,
+                headers=headers,
+            )
+    except httpx.ConnectError:
+        raise HTTPException(502, "Upstream service unreachable")
+    except httpx.ConnectTimeout:
+        raise HTTPException(504, "Upstream service timed out")
+    except httpx.RequestError as e:
+        raise HTTPException(502, f"Upstream error: {type(e).__name__}")
 
     response_headers = filter_headers(upstream_response.headers)
 
