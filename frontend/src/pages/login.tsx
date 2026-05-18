@@ -77,7 +77,7 @@ function Login() {
               style={{ whiteSpace: "nowrap" }}
             >
               <img
-                src="leaf-svgrepo-com.svg"
+                src="/leaf-svgrepo-com.svg"
                 height="65"
                 className="me-3"
                 alt="Logo"

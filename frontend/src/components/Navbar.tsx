@@ -88,7 +88,7 @@ function Navbar() {
                 className="d-inline-flex align-items-center m-0"
               >
                 <img
-                  src="leaf-svgrepo-com.svg"
+                  src="/leaf-svgrepo-com.svg"
                   height="40"
                   className="me-2"
                   alt="Logo"
