@@ -1,16 +1,19 @@
 """
 Security utilities: password hashing, JWT creation and verification.
 """
+
 import os
 from datetime import datetime, timedelta
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
+from app.config import settings
+
 # Read configuration from environment
-JWT_SECRET = os.getenv("JWT_SECRET", "fallback-secret")
-JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
+JWT_SECRET = settings.jwt_secret
+JWT_ALGORITHM = settings.jwt_algorithm
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.access_token_expire_minutes
 
 # bcrypt context for password hashing
 # truncate_error=False suppresses the passlib/bcrypt 4.x version-detection warning
