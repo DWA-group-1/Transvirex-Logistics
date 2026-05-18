@@ -1,7 +1,17 @@
+from contextlib import asynccontextmanager
+
 import httpx
 from fastapi import FastAPI, HTTPException, Request, Response
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.state.http_client = httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=5.0))
+    yield
+    await app.state.http_client.aclose()
+
+
+app = FastAPI(lifespan=lifespan)
 
 SERVICES = {"auth": "http://localhost:8001"}
 
@@ -35,19 +45,17 @@ async def proxy(prefix: str, path: str, request: Request):
     if prefix not in SERVICES:
         raise HTTPException(status_code=404, detail=f"Unknown service: {prefix}")
     target_url = f"{SERVICES[prefix]}/{path}"
-
     headers = filter_headers(request.headers)
-    timeout = httpx.Timeout(30.0, connect=5.0)
+    client = request.app.state.http_client
 
     try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            upstream_response = await client.request(
-                method=request.method,
-                url=target_url,
-                content=await request.body(),
-                params=request.query_params,
-                headers=headers,
-            )
+        upstream_response = await client.request(
+            method=request.method,
+            url=target_url,
+            content=await request.body(),
+            params=request.query_params,
+            headers=headers,
+        )
     except httpx.ConnectError:
         raise HTTPException(502, "Upstream service unreachable")
     except httpx.ConnectTimeout:
