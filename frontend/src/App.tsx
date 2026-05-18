@@ -3,6 +3,7 @@ import { Container } from "react-bootstrap";
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
 import Login from "./pages/login";
+import Register from "./pages/register";
 import TrackInvoices from "./pages/TrackInvoices";
 import TrackOrders from "./pages/TrackOrders";
 import PlanRoutes from "./pages/PlanRoutes";
@@ -45,6 +46,14 @@ function App() {
             <>
               <Navbar />
               <PlanRoutes />
+            </>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <>
+              <Register />
             </>
           }
         />
