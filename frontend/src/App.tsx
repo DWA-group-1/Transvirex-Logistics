@@ -1,8 +1,11 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Container } from "react-bootstrap";
-import Navbar from "./components/Navbar"; // Import your custom Navbar component
+import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
-import Login from "./pages/Login";
+import Login from "./pages/login";
+import TrackInvoices from "./pages/TrackInvoices";
+import TrackOrders from "./pages/TrackOrders";
+import PlanRoutes from "./pages/PlanRoutes";
 
 function App() {
   return (
@@ -15,6 +18,33 @@ function App() {
             <>
               <Navbar />
               <Home />
+            </>
+          }
+        />
+        <Route
+          path="/track-orders"
+          element={
+            <>
+              <Navbar />
+              <TrackOrders />
+            </>
+          }
+        />
+        <Route
+          path="/track-invoices"
+          element={
+            <>
+              <Navbar />
+              <TrackInvoices />
+            </>
+          }
+        />
+        <Route
+          path="/plan-routes"
+          element={
+            <>
+              <Navbar />
+              <PlanRoutes />
             </>
           }
         />
