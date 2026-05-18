@@ -3,6 +3,8 @@ from contextlib import asynccontextmanager
 import httpx
 from fastapi import FastAPI, HTTPException, Request, Response
 
+from .config import settings
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -13,7 +15,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-SERVICES = {"auth": "http://localhost:8001"}
+SERVICES = {"auth": settings.auth_url}
 
 HOP_BY_HOP = {
     "connection",
