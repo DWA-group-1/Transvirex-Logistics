@@ -1,8 +1,8 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Container } from "react-bootstrap";
-import Navbar from "./components/Navbar";  // Import your custom Navbar component
+import Navbar from "./components/Navbar"; // Import your custom Navbar component
 import Home from "./pages/Home";
-import Login from "./pages/Login";
+import Login from "./pages/login";
 
 function App() {
   return (

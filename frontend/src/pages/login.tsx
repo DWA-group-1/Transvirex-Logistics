@@ -7,7 +7,6 @@ function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState(null);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -84,7 +83,7 @@ function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             ></Form.Control>
-            <Form.Text id="HelpConfigureEmailBlock">
+            <Form.Text id="HelpConfigurePasswordBlock">
               Your password must be 8-20 characters long, contain letters and
               numbers, and must not contain spaces, special characters, or
               emoji.
@@ -95,14 +94,6 @@ function Login() {
             <Button variant="primary" size="lg" onClick={handleSubmit}>
               Login
             </Button>
-            <Button
-              variant="secondary"
-              size="lg"
-              onClick={() => navigate("/home")}
-            >
-              Go Home
-            </Button>
-            {error && <p>{error}</p>}
           </div>
         </Form>
       </div>

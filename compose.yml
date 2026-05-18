@@ -47,7 +47,7 @@ services:
     container_name: frontend
     restart: unless-stopped
     ports:
-      - "5173:5173"
+      - "5174:5174"
     environment:
       - CHOKIDAR_USEPOLLING=true
 

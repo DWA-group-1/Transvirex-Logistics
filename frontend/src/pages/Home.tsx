@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Button, Col, Container, Nav, Offcanvas, Row } from "react-bootstrap";
 
-{/*
+{
+  /*
   SHOWS THE MAIN dashboard after login. ADJUSTS TO MOBILE AND DESKTOP.
-*/}
+*/
+}
 function Home() {
   return (
     <>
@@ -31,7 +33,9 @@ function Home() {
                       <i className="bi bi-truck me-2"></i>
                       Track Orders
                     </h5>
-                    <p className="card-text">Monitor your shipments in real-time.</p>
+                    <p className="card-text">
+                      Monitor your shipments in real-time.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -42,7 +46,9 @@ function Home() {
                       <i className="bi bi-map me-2"></i>
                       Plan Routes
                     </h5>
-                    <p className="card-text">Optimize delivery routes efficiently.</p>
+                    <p className="card-text">
+                      Optimize delivery routes efficiently.
+                    </p>
                   </div>
                 </div>
               </div>
