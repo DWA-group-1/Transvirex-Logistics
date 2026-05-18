@@ -58,7 +58,7 @@ async def proxy(prefix: str, path: str, request: Request):
         )
     except httpx.ConnectError:
         raise HTTPException(502, "Upstream service unreachable")
-    except httpx.ConnectTimeout:
+    except httpx.TimeoutException:
         raise HTTPException(504, "Upstream service timed out")
     except httpx.RequestError as e:
         raise HTTPException(502, f"Upstream error: {type(e).__name__}")
