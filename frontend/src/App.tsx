@@ -1,14 +1,25 @@
-import { Button, Container, Navbar } from "react-bootstrap";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Container } from "react-bootstrap";
+import Navbar from "./components/Navbar"; // Import your custom Navbar component
+import Home from "./pages/Home";
+import Login from "./pages/Login";
 
 function App() {
   return (
-    <Container>
-      <Navbar bg="dark" variant="dark">
-        <Navbar.Brand>Transvirex Logistics</Navbar.Brand>
-      </Navbar>
-      <i className="bi bi-house" />
-      <Button variant="primary">asdkajsd</Button>
-    </Container>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Login />} />
+        <Route
+          path="/home"
+          element={
+            <>
+              <Navbar />
+              <Home />
+            </>
+          }
+        />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
