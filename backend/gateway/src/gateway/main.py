@@ -5,6 +5,7 @@ import httpx
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
+from .auth import extract_token, verify_jwt
 from .config import settings
 from .middleware import AccessLogMiddleware, RequestIDMiddleware
 
@@ -31,7 +32,7 @@ app.add_middleware(
 app.add_middleware(AccessLogMiddleware)
 app.add_middleware(RequestIDMiddleware)
 
-SERVICES = {"auth": settings.auth_url}
+SERVICES = {"auth": settings.auth_url, "notification": settings.notification_url}
 
 HOP_BY_HOP = {
     "connection",
@@ -45,6 +46,8 @@ HOP_BY_HOP = {
     "host",
     "content-length",
 }
+
+PUBLIC_PREFIXES = {"auth"}
 
 
 def filter_headers(headers):
@@ -62,9 +65,18 @@ def health():
 async def proxy(prefix: str, path: str, request: Request):
     if prefix not in SERVICES:
         raise HTTPException(status_code=404, detail=f"Unknown service: {prefix}")
+
+    claims = None
+    if prefix not in PUBLIC_PREFIXES:
+        token = extract_token(request.headers.get("Authorization"))
+        claims = verify_jwt(token)
+
     target_url = f"{SERVICES[prefix]}/{path}"
     headers = filter_headers(request.headers)
     headers["X-Request-Id"] = request.state.request_id
+    if claims:
+        headers["X-User-Id"] = claims.get("sub", "")
+
     client = request.app.state.http_client
 
     try:
