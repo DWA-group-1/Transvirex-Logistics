@@ -47,7 +47,7 @@ HOP_BY_HOP = {
     "content-length",
 }
 
-PUBLIC_PREFIXES = {"auth"}
+PUBLIC_PREFIXES = {"auth/token"}
 
 
 def filter_headers(headers):
@@ -66,8 +66,9 @@ async def proxy(prefix: str, path: str, request: Request):
     if prefix not in SERVICES:
         raise HTTPException(status_code=404, detail=f"Unknown service: {prefix}")
 
+    full_path = f"{prefix}/{path}"
     claims = None
-    if prefix not in PUBLIC_PREFIXES:
+    if full_path not in PUBLIC_PREFIXES:
         token = extract_token(request.headers.get("Authorization"))
         claims = verify_jwt(token)
 

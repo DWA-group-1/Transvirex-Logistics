@@ -1,7 +1,9 @@
 from datetime import datetime
 from enum import Enum
 
-from sqlalchemy import DateTime, func
+from sqlalchemy import DateTime
+from sqlalchemy import Enum as SAEnum
+from sqlalchemy import func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .database import Base
@@ -20,7 +22,13 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(unique=True)
     hashed_password: Mapped[str]
-    role: Mapped[str]
+    role: Mapped[Role] = mapped_column(
+        SAEnum(
+            Role,
+            name="user_role",
+            values_callable=lambda enum_cls: [e.value for e in enum_cls],
+        ),
+    )
     is_admin: Mapped[bool] = mapped_column(
         default=False, nullable=False, server_default="false"
     )

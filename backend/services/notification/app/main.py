@@ -1,16 +1,3 @@
-"""
-Notification Service.
-
-Endpoints :
-  GET  /notifications          → liste des notifs de l'utilisateur connecté
-  POST /notifications          → créer et diffuser une notif (dispatcher/manager)
-  PUT  /notifications/read     → marquer comme lues
-  WS   /ws/notifications       → connexion temps réel
-"""
-
-import json
-from contextlib import asynccontextmanager
-
 from fastapi import (
     Depends,
     FastAPI,
@@ -31,15 +18,7 @@ from .models import Notification
 from .schemas import MarkReadRequest, NotificationCreate, NotificationOut
 from .security import decode_access_token
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    yield
-
-
-app = FastAPI(title="Notification Service", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="Notification Service", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -73,11 +52,6 @@ async def list_notifications(
     user: dict = Depends(current_user_from_headers),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Retourne les notifications de l'utilisateur connecté :
-    - les notifs ciblées par son user_id
-    - les notifs broadcastées à son rôle
-    """
     user_id: int = user["user_id"]
     role: str = user["role"]
 
@@ -108,11 +82,6 @@ async def create_notification(
     user: dict = Depends(current_user_from_headers),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Crée une notification et la diffuse immédiatement via WebSocket
-    aux utilisateurs connectés concernés.
-    Accessible à tous les rôles (chaque service appelant peut en créer).
-    """
     if not data.target_user_id and not data.target_role:
         raise HTTPException(400, "Provide target_user_id or target_role")
 
@@ -184,14 +153,6 @@ async def ws_notifications(
     token: str = Query(...),  # ws://host/ws/notifications?token=<jwt>
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Connexion WebSocket authentifiée par JWT (passé en query param).
-    À la connexion :
-      1. Vérifie le token
-      2. Enregistre la connexion dans le manager (by_user_id + by_role)
-      3. Envoie les notifications non lues en attente (persistées en DB)
-      4. Reste en écoute jusqu'à déconnexion
-    """
     payload = decode_access_token(token)
     if not payload:
         await websocket.close(code=4001)

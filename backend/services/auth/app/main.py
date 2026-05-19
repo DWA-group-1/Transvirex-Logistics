@@ -1,8 +1,3 @@
-"""
-Auth Service — FastAPI application.
-Handles user registration, login (OAuth2 password flow), and identity verification.
-"""
-
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException, status
@@ -21,16 +16,7 @@ from .security import (
     verify_password,
 )
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-    yield
-
-
-app = FastAPI(title="Auth Service", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="Auth Service", version="1.0.0")
 
 # Allow all origins so the frontend and todo-service can call this API
 app.add_middleware(
@@ -51,7 +37,6 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 async def get_current_user(
     token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)
 ) -> User:
-    """Decode JWT and return the matching User, or raise 401."""
     payload = decode_access_token(token)
     if payload is None:
         raise HTTPException(
@@ -77,18 +62,26 @@ async def get_current_user(
     return user
 
 
+async def require_admin(current_user: User = Depends(get_current_user)) -> User:
+    if not current_user.is_admin:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Admin access required")
+    return current_user
+
+
 # ─── Routes ────────────────────────────────────────────────────────────────
 
 
 @app.get("/health")
 def health():
-    """Simple health-check endpoint."""
     return {"status": "ok"}
 
 
 @app.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
-    """Register a new user with email + hashed password."""
+async def register(
+    user_data: UserCreate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
     # Check for duplicate email
     result = await db.execute(select(User).where(User.email == user_data.email))
     existing = result.scalar_one_or_none()
