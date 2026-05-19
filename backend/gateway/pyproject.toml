@@ -1,7 +1,7 @@
 [project]
 name = "gateway"
 version = "0.1.0"
-description = "Add your description here"
+description = "The gateway of the app"
 requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.136.1",
