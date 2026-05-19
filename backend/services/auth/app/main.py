@@ -51,7 +51,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
     if not email:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
 
-    statement = select(User).where(User.email == form_data.username)
+    statement = select(User).where(User.email == email)
 
     result = await db.execute(statement)
 
