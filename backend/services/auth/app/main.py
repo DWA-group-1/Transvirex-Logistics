@@ -18,15 +18,6 @@ from .security import (
 
 app = FastAPI(title="Auth Service", version="1.0.0")
 
-# Allow all origins so the frontend and todo-service can call this API
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 # OAuth2 scheme — points to the token endpoint
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 
