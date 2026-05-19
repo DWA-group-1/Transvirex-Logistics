@@ -7,19 +7,28 @@ Endpoints :
   PUT  /notifications/read     → marquer comme lues
   WS   /ws/notifications       → connexion temps réel
 """
+
 import json
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Depends, HTTPException, WebSocket, WebSocketDisconnect, status, Query
+from fastapi import (
+    Depends,
+    FastAPI,
+    HTTPException,
+    Query,
+    WebSocket,
+    WebSocketDisconnect,
+    status,
+)
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import select, or_, and_
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .database import engine, get_db, Base, settings
-from .models import Notification
-from .schemas import NotificationCreate, NotificationOut, MarkReadRequest
-from .security import decode_access_token
+from .database import Base, engine, get_db, settings
 from .manager import manager
+from .models import Notification
+from .schemas import MarkReadRequest, NotificationCreate, NotificationOut
+from .security import decode_access_token
 
 
 @asynccontextmanager
@@ -42,6 +51,7 @@ app.add_middleware(
 
 # ─── Auth dependency (HTTP) ────────────────────────────────────────────────
 
+
 def require_auth(authorization: str = Query(..., alias="Authorization")) -> dict:
     """Extrait et vérifie le JWT depuis le header Authorization."""
     raise HTTPException(500, "Use the HTTP header version")
@@ -55,6 +65,7 @@ def get_token_payload(token: str) -> dict:
 
 
 from fastapi.security import OAuth2PasswordBearer
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="http://localhost:8001/token")
 
 
@@ -63,6 +74,7 @@ def current_user_payload(token: str = Depends(oauth2_scheme)) -> dict:
 
 
 # ─── Routes HTTP ───────────────────────────────────────────────────────────
+
 
 @app.get("/health")
 def health():
@@ -80,14 +92,18 @@ async def list_notifications(
     - les notifs ciblées par son user_id
     - les notifs broadcastées à son rôle
     """
-    user_id: int = payload["user_id"]
+    user_id: int = payload["sub"]
     role: str = payload["role"]
 
     filters = [
         Notification.target_user_id == user_id,
         Notification.target_role == role,
     ]
-    query = select(Notification).where(or_(*filters)).order_by(Notification.created_at.desc())
+    query = (
+        select(Notification)
+        .where(or_(*filters))
+        .order_by(Notification.created_at.desc())
+    )
 
     if unread_only:
         query = query.where(Notification.is_read == False)
@@ -96,7 +112,11 @@ async def list_notifications(
     return result.scalars().all()
 
 
-@app.post("/notifications", response_model=NotificationOut, status_code=status.HTTP_201_CREATED)
+@app.post(
+    "/notifications",
+    response_model=NotificationOut,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_notification(
     data: NotificationCreate,
     payload: dict = Depends(current_user_payload),
@@ -171,10 +191,11 @@ async def mark_as_read(
 
 # ─── WebSocket ─────────────────────────────────────────────────────────────
 
+
 @app.websocket("/ws/notifications")
 async def ws_notifications(
     websocket: WebSocket,
-    token: str = Query(...),        # ws://host/ws/notifications?token=<jwt>
+    token: str = Query(...),  # ws://host/ws/notifications?token=<jwt>
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -197,7 +218,8 @@ async def ws_notifications(
 
     # Envoie les notifs non lues stockées en DB
     result = await db.execute(
-        select(Notification).where(
+        select(Notification)
+        .where(
             and_(
                 Notification.is_read == False,
                 or_(
@@ -205,19 +227,22 @@ async def ws_notifications(
                     Notification.target_role == role,
                 ),
             )
-        ).order_by(Notification.created_at.asc())
+        )
+        .order_by(Notification.created_at.asc())
     )
     pending = result.scalars().all()
 
     for notif in pending:
-        await websocket.send_json({
-            "id": notif.id,
-            "type": notif.type,
-            "title": notif.title,
-            "message": notif.message,
-            "payload": notif.payload,
-            "created_at": notif.created_at.isoformat(),
-        })
+        await websocket.send_json(
+            {
+                "id": notif.id,
+                "type": notif.type,
+                "title": notif.title,
+                "message": notif.message,
+                "payload": notif.payload,
+                "created_at": notif.created_at.isoformat(),
+            }
+        )
 
     # Boucle de maintien de connexion (le client peut envoyer un ping)
     try:
@@ -227,3 +252,4 @@ async def ws_notifications(
                 await websocket.send_text("pong")
     except WebSocketDisconnect:
         manager.disconnect(websocket, user_id, role)
+

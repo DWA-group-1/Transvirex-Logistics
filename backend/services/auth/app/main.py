@@ -59,13 +59,13 @@ async def get_current_user(
             detail="Invalid or expired token",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    email: str = payload.get("sub")
-    if not email:
+    user_id = payload.get("sub")
+    if not user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload"
         )
 
-    statement = select(User).where(User.email == email)
+    statement = select(User).where(User.id == int(user_id))
 
     result = await db.execute(statement)
 
@@ -103,8 +103,8 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
         hashed_password=hash_password(user_data.password),
     )
     db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
+    await db.commit()
+    await db.refresh(new_user)
     return new_user
 
 
@@ -131,12 +131,12 @@ async def login(
 
     # Encode the user's email as the 'sub' claim
     access_token = create_access_token(
-        data={"sub": user.id, "role": user.role, "email": user.email}
+        data={"sub": str(user.id), "role": user.role, "email": user.email}
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
 
 @app.get("/me", response_model=UserOut)
-def get_me(current_user: User = Depends(get_current_user)):
+async def get_me(current_user: User = Depends(get_current_user)):
     """Return the profile of the currently authenticated user."""
     return current_user
