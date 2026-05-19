@@ -2,17 +2,25 @@
 Auth Service — FastAPI application.
 Handles user registration, login (OAuth2 password flow), and identity verification.
 """
-from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+
 from contextlib import asynccontextmanager
 
-from .database import engine, get_db, Base
+from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from .database import Base, engine, get_db
 from .models import User
-from .schemas import UserCreate, UserOut, Token
-from .security import hash_password, verify_password, create_access_token, decode_access_token
+from .schemas import Token, UserCreate, UserOut
+from .security import (
+    create_access_token,
+    decode_access_token,
+    hash_password,
+    verify_password,
+)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -20,6 +28,7 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
 
     yield
+
 
 app = FastAPI(title="Auth Service", version="1.0.0", lifespan=lifespan)
 
@@ -38,7 +47,10 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 
 # ─── Helper ────────────────────────────────────────────────────────────────
 
-async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)) -> User:
+
+async def get_current_user(
+    token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)
+) -> User:
     """Decode JWT and return the matching User, or raise 401."""
     payload = decode_access_token(token)
     if payload is None:
@@ -49,7 +61,9 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
         )
     email: str = payload.get("sub")
     if not email:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload"
+        )
 
     statement = select(User).where(User.email == email)
 
@@ -57,11 +71,14 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
 
     user = result.scalars().first()
     if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found"
+        )
     return user
 
 
 # ─── Routes ────────────────────────────────────────────────────────────────
+
 
 @app.get("/health")
 def health():
@@ -92,7 +109,9 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
 
 
 @app.post("/token", response_model=Token)
-async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
+async def login(
+    form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)
+):
     """
     OAuth2 password flow login.
     Accepts form fields: username (email) and password.
@@ -111,7 +130,9 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSessi
         )
 
     # Encode the user's email as the 'sub' claim
-    access_token = create_access_token(data={"sub": user.email, "role": user.role, "user_id": user.id})
+    access_token = create_access_token(
+        data={"sub": user.id, "role": user.role, "email": user.email}
+    )
     return {"access_token": access_token, "token_type": "bearer"}
 
 
