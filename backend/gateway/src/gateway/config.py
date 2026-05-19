@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     )
 
     auth_url: str = "http://localhost:8001"
+    cors_origins: list[str] = ["http://localhost:5173", "http://localhost:4173"]
 
 
 settings = Settings()
