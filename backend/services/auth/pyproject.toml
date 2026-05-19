@@ -1,8 +1,8 @@
 [project]
 name = "auth"
 version = "0.1.0"
-description = "Add your description here"
-requires-python = ">=3.14"
+description = "Authentication Service"
+requires-python = ">=3.13"
 dependencies = [
     "alembic>=1.18.4",
     "fastapi>=0.136.1",
@@ -14,7 +14,7 @@ dependencies = [
     "uvicorn[standard]>=0.46.0",
     "passlib==1.7.4",
     "bcrypt==4.0.1",
-    "python-jose[cryptography]==3.3.0",
+    "pyjwt[crypto]>=2.10.0",
     "python-multipart==0.0.9",
 ]
 
