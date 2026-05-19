@@ -1,9 +1,15 @@
+import logging
 from contextlib import asynccontextmanager
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request, Response
 
 from .config import settings
+from .middleware import AccessLogMiddleware, RequestIDMiddleware
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s"
+)
 
 
 @asynccontextmanager
@@ -14,6 +20,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+app.add_middleware(AccessLogMiddleware)
+app.add_middleware(RequestIDMiddleware)
 
 SERVICES = {"auth": settings.auth_url}
 
@@ -48,6 +56,7 @@ async def proxy(prefix: str, path: str, request: Request):
         raise HTTPException(status_code=404, detail=f"Unknown service: {prefix}")
     target_url = f"{SERVICES[prefix]}/{path}"
     headers = filter_headers(request.headers)
+    headers["X-Request-Id"] = request.state.request_id
     client = request.app.state.http_client
 
     try:
