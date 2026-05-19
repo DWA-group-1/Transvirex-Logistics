@@ -92,13 +92,17 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
 
 
 @app.post("/token", response_model=Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
+async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
     """
     OAuth2 password flow login.
     Accepts form fields: username (email) and password.
     Returns a signed JWT access token.
     """
-    user = db.query(User).filter(User.email == form_data.username).first()
+    statement = select(User).where(User.email == form_data.username)
+
+    result = await db.execute(statement)
+
+    user = result.scalars().first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
