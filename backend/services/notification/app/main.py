@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .database import Base, engine, get_db, settings
+from .database import get_db
 from .manager import manager
 from .models import Notification
 from .schemas import MarkReadRequest, NotificationCreate, NotificationOut
