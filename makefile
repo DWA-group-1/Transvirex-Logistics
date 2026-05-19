@@ -7,16 +7,26 @@ COMPOSE := $(shell \
     echo ""; \
   fi)
 
-AUTH_DIR := backend/services/auth
+AUTH_DIR     := backend/services/auth
+NOTIF_DIR    := backend/services/notification
+GATEWAY_DIR  := backend/gateway
 FRONTEND_DIR := frontend
 
+# Default service for generic targets (override with s=<name>)
+s ?= auth
+
 .PHONY: help check-tools \
-        setup sync install-host install-auth install-frontend \
+        setup sync install-host install-auth install-notif install-gateway install-frontend \
         up down restart build rebuild \
-        ps logs logs-auth logs-frontend logs-auth-db \
-        shell-auth shell-frontend psql-auth \
-        migrate migrate-create migrate-history migrate-current \
-        test test-auth lint format \
+        ps logs logs-auth logs-notif logs-gateway logs-frontend logs-auth-db logs-notif-db \
+        shell shell-auth shell-notif shell-gateway shell-frontend \
+        psql-auth psql-notif \
+        migrate migrate-auth migrate-notif \
+        migrate-create migrate-create-auth migrate-create-notif \
+        migrate-history migrate-history-auth migrate-history-notif \
+        migrate-current migrate-current-auth migrate-current-notif \
+        seed-admin \
+        test test-auth test-notif lint format \
         clean nuke
 
 .DEFAULT_GOAL := help
@@ -25,87 +35,95 @@ help:
 	@echo "Transvirex Logistics — available commands"
 	@echo ""
 	@echo "Setup (run once on a new machine)"
-	@echo "  make check-tools     Verify required tools are installed"
-	@echo "  make setup           Full first-time setup (host deps + build + migrate)"
+	@echo "  make check-tools       Verify required tools are installed"
+	@echo "  make setup             Full first-time setup (host deps + build + migrate + seed)"
 	@echo ""
 	@echo "Daily workflow"
-	@echo "  make up              Start all containers"
-	@echo "  make down            Stop all containers"
-	@echo "  make sync            After git pull: install host deps + rebuild containers"
-	@echo "  make restart s=auth  Restart one service"
+	@echo "  make up                Start all containers"
+	@echo "  make down              Stop all containers"
+	@echo "  make sync              After git pull: install host deps + rebuild containers"
+	@echo "  make restart s=auth    Restart one service (s=auth|notification|gateway|frontend)"
 	@echo ""
 	@echo "Build"
-	@echo "  make build           Build images without starting"
-	@echo "  make rebuild         Force rebuild from scratch (no cache)"
+	@echo "  make build             Build images without starting"
+	@echo "  make rebuild           Force rebuild from scratch (no cache)"
 	@echo ""
 	@echo "Inspect"
-	@echo "  make ps              List running containers"
-	@echo "  make logs            Tail all logs"
-	@echo "  make logs-auth       Tail auth service logs"
-	@echo "  make logs-frontend   Tail frontend logs"
-	@echo "  make logs-db         Tail auth_db logs"
-	@echo "  make shell-auth      Shell into auth container"
-	@echo "  make shell-frontend  Shell into frontend container"
-	@echo "  make psql            psql into auth_db"
+	@echo "  make ps                List running containers"
+	@echo "  make logs              Tail all logs"
+	@echo "  make logs s=auth       Tail logs of one service"
+	@echo "  make logs-auth         Tail auth service logs"
+	@echo "  make logs-notif        Tail notification service logs"
+	@echo "  make logs-gateway      Tail gateway logs"
+	@echo "  make logs-frontend     Tail frontend logs"
+	@echo "  make logs-auth-db      Tail auth_db logs"
+	@echo "  make logs-notif-db     Tail notification_db logs"
+	@echo "  make shell s=auth      Shell into a service container"
+	@echo "  make shell-auth        Shell into auth container"
+	@echo "  make shell-notif       Shell into notification container"
+	@echo "  make shell-gateway     Shell into gateway container"
+	@echo "  make shell-frontend    Shell into frontend container"
+	@echo "  make psql-auth         psql into auth_db"
+	@echo "  make psql-notif        psql into notification_db"
 	@echo ""
 	@echo "Database migrations"
-	@echo "  make migrate                       Apply pending migrations"
-	@echo "  make migrate-create m='message'    Generate new migration"
-	@echo "  make migrate-current               Show current migration version"
-	@echo "  make migrate-history               Show migration history"
+	@echo "  make migrate                            Apply pending migrations to all services"
+	@echo "  make migrate-auth                       Apply pending migrations to auth"
+	@echo "  make migrate-notif                      Apply pending migrations to notification"
+	@echo "  make migrate-create s=auth m='message'  Generate new migration for service s"
+	@echo "  make migrate-current                    Show current revision for all services"
+	@echo "  make migrate-history                    Show migration history for all services"
+	@echo ""
+	@echo "Seed"
+	@echo "  make seed-admin        Create the initial admin user (email: admin@transvirex.local)"
 	@echo ""
 	@echo "Test & lint"
-	@echo "  make test            Run all tests"
-	@echo "  make test-auth       Run auth service tests"
-	@echo "  make lint            Run ruff on auth service"
-	@echo "  make format          Format auth service with ruff"
+	@echo "  make test              Run all tests"
+	@echo "  make test-auth         Run auth service tests"
+	@echo "  make test-notif        Run notification service tests"
+	@echo "  make lint              Run ruff on all services"
+	@echo "  make format            Format all services with ruff"
 	@echo ""
 	@echo "Housekeeping"
-	@echo "  make clean           Remove caches and build artifacts"
-	@echo "  make nuke            Stop containers and wipe volumes (loses DB data!)"
+	@echo "  make clean             Remove caches and build artifacts"
+	@echo "  make nuke              Stop containers and wipe volumes (loses DB data!)"
 
 check-tools:
 	@command -v node >/dev/null 2>&1 || { echo "node not found. Install Node.js 20+: https://nodejs.org"; exit 1; }
 	@command -v npm  >/dev/null 2>&1 || { echo "npm not found (should ship with node)"; exit 1; }
-	@command -v uv   >/dev/null 2>&1 || { echo "uv not found. Run: curl -LsSf https://astral.sh/uv/install.sh | sh"; exit 1; }
-	@if [ -z "$(COMPOSE)" ]; then \
-	  echo "No container runtime found. Install podman or docker."; \
-	  exit 1; \
-	fi
-	@echo "All required tools present (using $(COMPOSE))"
+	@command -v uv   >/dev/null 2>&1 || { echo "uv not found. Install: https://docs.astral.sh/uv/"; exit 1; }
+	@[ -n "$(COMPOSE)" ] || { echo "Neither 'podman compose' nor 'docker compose' found"; exit 1; }
+	@echo "All tools OK. Using: $(COMPOSE)"
 
-setup: check-tools install-host build up migrate
+setup: check-tools install-host build up migrate seed-admin
 	@echo ""
-	@echo "Setup complete. Run 'make logs' to see what's running."
+	@echo "Setup complete. Gateway on http://localhost:8000, frontend on http://localhost:5173"
 
-sync: install-host build
-	@echo ""
-	@echo "Sync complete. Run 'make up' to start, or 'make restart s=<service>'."
+sync: install-host rebuild up migrate
+	@echo "Sync complete."
 
-install-host: install-auth install-frontend
-	@echo "Host-side dependencies installed (for IDE/editor support)."
+install-host: install-auth install-notif install-gateway install-frontend
 
 install-auth:
-	@echo "Installing auth service deps on host..."
 	cd $(AUTH_DIR) && uv sync
 
-install-frontend:
-	@echo "Installing frontend deps on host..."
-	cd $(FRONTEND_DIR) && npm install
+install-notif:
+	cd $(NOTIF_DIR) && uv sync
 
-dev: up
-	@echo ""
-	@echo "Backend up. Starting frontend on host..."
-	@echo "Gateway: http://localhost:8080"
-	@echo "Frontend: http://localhost:5173"
-	@echo ""
-	cd frontend && npm run dev
+install-gateway:
+	cd $(GATEWAY_DIR) && uv sync
+
+install-frontend:
+	cd $(FRONTEND_DIR) && npm install
 
 up:
 	$(COMPOSE) up -d
 
 down:
-	$(COMPOSE) down --remove-orphans
+	$(COMPOSE) down
+
+restart:
+	$(COMPOSE) restart $(s)
 
 build:
 	$(COMPOSE) build
@@ -113,19 +131,20 @@ build:
 rebuild:
 	$(COMPOSE) build --no-cache
 
-# Restart a specific service. Usage: make restart s=auth
-restart:
-	@if [ -z "$(s)" ]; then echo "Usage: make restart s=<service>"; exit 1; fi
-	$(COMPOSE) restart $(s)
-
 ps:
 	$(COMPOSE) ps
 
 logs:
-	$(COMPOSE) logs -f
+	$(COMPOSE) logs -f $(s)
 
 logs-auth:
 	$(COMPOSE) logs -f auth
+
+logs-notif:
+	$(COMPOSE) logs -f notification
+
+logs-gateway:
+	$(COMPOSE) logs -f gateway
 
 logs-frontend:
 	$(COMPOSE) logs -f frontend
@@ -133,58 +152,100 @@ logs-frontend:
 logs-auth-db:
 	$(COMPOSE) logs -f auth_db
 
+logs-notif-db:
+	$(COMPOSE) logs -f notification_db
+
+shell:
+	$(COMPOSE) exec $(s) sh
+
 shell-auth:
-	$(COMPOSE) exec auth bash
+	$(COMPOSE) exec auth sh
+
+shell-notif:
+	$(COMPOSE) exec notification sh
+
+shell-gateway:
+	$(COMPOSE) exec gateway sh
 
 shell-frontend:
 	$(COMPOSE) exec frontend sh
 
+# psql targets read env vars *inside* the container, not on the host.
+# $$ escapes Make's variable expansion so the dollar reaches the shell.
 psql-auth:
-	$(COMPOSE) exec auth_db psql -U $$AUTH_DB_USER -d authentication
+	$(COMPOSE) exec auth_db sh -c 'psql -U $$POSTGRES_USER -d $$POSTGRES_DB'
 
-migrate:
-	@if [ -n "$(m)" ]; then echo "Note: 'm=...' is ignored by 'migrate'. Did you mean 'migrate-create'?"; fi
+psql-notif:
+	$(COMPOSE) exec notification_db sh -c 'psql -U $$POSTGRES_USER -d $$POSTGRES_DB'
+
+migrate: migrate-auth migrate-notif
+
+migrate-auth:
 	$(COMPOSE) exec auth alembic upgrade head
 
+migrate-notif:
+	$(COMPOSE) exec notification alembic upgrade head
+
+# Generate a new migration. Usage: make migrate-create s=auth m="message"
 migrate-create:
-	@if [ -z "$(m)" ]; then echo "Usage: make migrate-create m='your message'"; exit 1; fi
+	@[ -n "$(m)" ] || { echo "Usage: make migrate-create s=<service> m=\"message\""; exit 1; }
+	$(COMPOSE) exec $(s) alembic revision --autogenerate -m "$(m)"
+
+# Convenience wrappers
+migrate-create-auth:
+	@[ -n "$(m)" ] || { echo "Usage: make migrate-create-auth m=\"message\""; exit 1; }
 	$(COMPOSE) exec auth alembic revision --autogenerate -m "$(m)"
 
-migrate-current:
+migrate-create-notif:
+	@[ -n "$(m)" ] || { echo "Usage: make migrate-create-notif m=\"message\""; exit 1; }
+	$(COMPOSE) exec notification alembic revision --autogenerate -m "$(m)"
+
+migrate-current: migrate-current-auth migrate-current-notif
+
+migrate-current-auth:
+	@echo "── auth ──"
 	$(COMPOSE) exec auth alembic current
 
-migrate-history:
+migrate-current-notif:
+	@echo "── notification ──"
+	$(COMPOSE) exec notification alembic current
+
+migrate-history: migrate-history-auth migrate-history-notif
+
+migrate-history-auth:
+	@echo "── auth ──"
 	$(COMPOSE) exec auth alembic history
 
-test: test-auth
+migrate-history-notif:
+	@echo "── notification ──"
+	$(COMPOSE) exec notification alembic history
+
+seed-admin:
+	$(COMPOSE) exec auth python -m scripts.seed_admin
+
+test: test-auth test-notif
 
 test-auth:
 	$(COMPOSE) exec auth pytest
 
+test-notif:
+	$(COMPOSE) exec notification pytest
+
 lint:
-	cd $(AUTH_DIR) && uv run ruff check .
+	cd $(AUTH_DIR)    && uv run ruff check .
+	cd $(NOTIF_DIR)   && uv run ruff check .
+	cd $(GATEWAY_DIR) && uv run ruff check .
 
 format:
-	cd $(AUTH_DIR) && uv run ruff format .
+	cd $(AUTH_DIR)    && uv run ruff format .
+	cd $(NOTIF_DIR)   && uv run ruff format .
+	cd $(GATEWAY_DIR) && uv run ruff format .
 
 clean:
-	rm -rf $(FRONTEND_DIR)/node_modules $(FRONTEND_DIR)/dist
-	rm -rf $(AUTH_DIR)/.venv
-	find . -type d -name __pycache__ -exec rm -rf {} +
-	find . -type d -name .pytest_cache -exec rm -rf {} +
-	find . -type d -name .ruff_cache -exec rm -rf {} +
-	find . -type d -name .mypy_cache -exec rm -rf {} +
+	find . -type d -name __pycache__ -prune -exec rm -rf {} +
+	find . -type d -name .pytest_cache -prune -exec rm -rf {} +
+	find . -type d -name .ruff_cache -prune -exec rm -rf {} +
+	cd $(FRONTEND_DIR) && rm -rf dist node_modules/.vite
 
 nuke:
-	@echo "This will DELETE all containers and database data. Press Ctrl-C to cancel, Enter to continue."
-	@read _
-	$(COMPOSE) down --remove-orphans -v
-	@echo "Wiped. Run 'make setup' to start fresh."
-
-.PHONY: up-demo
-up-demo:
-	$(COMPOSE) --profile demo up -d --build
-
-.PHONY: down-demo
-down-demo:
-	$(COMPOSE) --profile demo down
+	$(COMPOSE) down -v
