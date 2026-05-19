@@ -14,6 +14,7 @@ from contextlib import asynccontextmanager
 from fastapi import (
     Depends,
     FastAPI,
+    Header,
     HTTPException,
     Query,
     WebSocket,
@@ -48,29 +49,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-# ─── Auth dependency (HTTP) ────────────────────────────────────────────────
-
-
-def require_auth(authorization: str = Query(..., alias="Authorization")) -> dict:
-    """Extrait et vérifie le JWT depuis le header Authorization."""
-    raise HTTPException(500, "Use the HTTP header version")
+# ─── Utils ─────────────────────────────────────────────────────────────────
 
 
-def get_token_payload(token: str) -> dict:
-    payload = decode_access_token(token)
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-    return payload
-
-
-from fastapi.security import OAuth2PasswordBearer
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="http://localhost:8001/token")
-
-
-def current_user_payload(token: str = Depends(oauth2_scheme)) -> dict:
-    return get_token_payload(token)
+def current_user_from_headers(
+    x_user_id: str = Header(..., alias="X-User-Id"),
+    x_user_role: str = Header(..., alias="X-User-Role"),
+) -> dict:
+    return {"user_id": int(x_user_id), "role": x_user_role}
 
 
 # ─── Routes HTTP ───────────────────────────────────────────────────────────
@@ -84,7 +70,7 @@ def health():
 @app.get("/notifications", response_model=list[NotificationOut])
 async def list_notifications(
     unread_only: bool = False,
-    payload: dict = Depends(current_user_payload),
+    user: dict = Depends(current_user_from_headers),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -92,8 +78,8 @@ async def list_notifications(
     - les notifs ciblées par son user_id
     - les notifs broadcastées à son rôle
     """
-    user_id: int = payload["sub"]
-    role: str = payload["role"]
+    user_id: int = user["user_id"]
+    role: str = user["role"]
 
     filters = [
         Notification.target_user_id == user_id,
@@ -119,7 +105,7 @@ async def list_notifications(
 )
 async def create_notification(
     data: NotificationCreate,
-    payload: dict = Depends(current_user_payload),
+    user: dict = Depends(current_user_from_headers),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -137,7 +123,7 @@ async def create_notification(
         title=data.title,
         message=data.message,
         payload=data.payload,
-        sender_id=payload.get("user_id"),
+        sender_id=user["user_id"],
     )
     db.add(notif)
     await db.commit()
@@ -165,12 +151,12 @@ async def create_notification(
 @app.put("/notifications/read", status_code=status.HTTP_204_NO_CONTENT)
 async def mark_as_read(
     body: MarkReadRequest,
-    payload: dict = Depends(current_user_payload),
+    user: dict = Depends(current_user_from_headers),
     db: AsyncSession = Depends(get_db),
 ):
     """Marque les notifications spécifiées comme lues (uniquement les siennes)."""
-    user_id: int = payload["user_id"]
-    role: str = payload["role"]
+    user_id: int = user["user_id"]
+    role: str = user["role"]
 
     result = await db.execute(
         select(Notification).where(
@@ -211,7 +197,7 @@ async def ws_notifications(
         await websocket.close(code=4001)
         return
 
-    user_id: int = payload["user_id"]
+    user_id: int = int(payload["sub"])
     role: str = payload["role"]
 
     await manager.connect(websocket, user_id, role)
@@ -252,4 +238,3 @@ async def ws_notifications(
                 await websocket.send_text("pong")
     except WebSocketDisconnect:
         manager.disconnect(websocket, user_id, role)
-

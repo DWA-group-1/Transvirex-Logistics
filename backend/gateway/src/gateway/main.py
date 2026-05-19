@@ -75,7 +75,9 @@ async def proxy(prefix: str, path: str, request: Request):
     headers = filter_headers(request.headers)
     headers["X-Request-Id"] = request.state.request_id
     if claims:
-        headers["X-User-Id"] = claims.get("sub", "")
+        headers["X-User-Id"] = str(claims.get("sub", ""))
+        headers["X-User-Role"] = claims.get("role", "")
+        headers["X-User-Email"] = claims.get("email", "")
 
     client = request.app.state.http_client
 

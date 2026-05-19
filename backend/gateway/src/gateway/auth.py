@@ -27,5 +27,5 @@ def verify_jwt(token: str) -> dict:
         return claims
     except jwt.ExpiredSignatureError:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token expired")
-    except jwt.InvalidTokenError:
-        HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid Token")
+    except jwt.InvalidTokenError as e:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, f"Invalid Token: {e}")
