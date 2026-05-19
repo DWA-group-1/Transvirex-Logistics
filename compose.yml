@@ -39,6 +39,40 @@ services:
         "--reload",
       ]
 
+# ─── PostgreSQL - NotificationDB ──────────────────────────────────────────
+  notification_db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${NOTIF_DB_USER}
+      POSTGRES_PASSWORD: ${NOTIF_DB_PASSWORD}
+      POSTGRES_DB: notifications
+    volumes:
+      - notif_pgdata:/var/lib/postgresql/data 
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${NOTIF_DB_USER} -d notifications"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ─── Notification Service ─────────────────────────────────────────────────
+  notification:
+    build: ./backend/services/notification
+    environment:
+      DATABASE_URL: postgresql+psycopg://${NOTIF_DB_USER}:${NOTIF_DB_PASSWORD}@notification_db:5432/notifications
+      JWT_SECRET: ${JWT_SECRET}       # même secret que auth !
+      JWT_ALGORITHM: HS256
+    ports:
+      - "8002:8000"
+    depends_on:
+      notification_db:
+        condition: service_healthy
+      auth:
+        condition: service_started
+    volumes:
+      - ./backend/services/notification/:/app:Z
+    command:
+      ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
   # ─── Frontend ──────────────────────────────────────────────────────────────
   frontend:
     profiles: ["prod"]
@@ -66,3 +100,4 @@ services:
 
 volumes:
   auth_pgdata:
+  notif_pgdata:
