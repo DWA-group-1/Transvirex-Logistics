@@ -2,7 +2,7 @@
 name = "auth"
 version = "0.1.0"
 description = "Add your description here"
-requires-python = ">=3.14"
+requires-python = ">=3.13"
 dependencies = [
     "alembic>=1.18.4",
     "fastapi>=0.136.1",
