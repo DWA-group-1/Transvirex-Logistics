@@ -1,4 +1,20 @@
 services:
+  # ─── Gateway ────────────────────────────────────────────────────────────────────────
+  gateway:
+    build: ./backend/gateway
+    environment:
+      GATEWAY_AUTH_URL: http://auth:8000
+      GATEWAY_NOTIF_URL: http://notification:8000
+      GATEWAY_JWT_SECRET: ${JWT_SECRET}
+      GATEWAY_CORS_ORIGINS: '["http://localhost:5173","http://localhost:4173"]'
+    ports:
+      - "8000:8000"
+    depends_on:
+      auth:
+        condition: service_healthy
+      notification:
+        condition: service_healthy
+
   # ─── PostgreSQL - AuthDB ────────────────────────────────────────────────────────────
   auth_db:
     image: postgres:17-alpine
@@ -24,6 +40,18 @@ services:
     depends_on:
       auth_db:
         condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health', timeout=2).status == 200 else 1)",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
     ports:
       - "8001:8000"
     volumes:
@@ -39,7 +67,7 @@ services:
         "--reload",
       ]
 
-# ─── PostgreSQL - NotificationDB ──────────────────────────────────────────
+  # ─── PostgreSQL - NotificationDB ──────────────────────────────────────────
   notification_db:
     image: postgres:17-alpine
     environment:
@@ -47,7 +75,7 @@ services:
       POSTGRES_PASSWORD: ${NOTIF_DB_PASSWORD}
       POSTGRES_DB: notifications
     volumes:
-      - notif_pgdata:/var/lib/postgresql/data 
+      - notif_pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${NOTIF_DB_USER} -d notifications"]
       interval: 5s
@@ -59,8 +87,7 @@ services:
     build: ./backend/services/notification
     environment:
       DATABASE_URL: postgresql+psycopg://${NOTIF_DB_USER}:${NOTIF_DB_PASSWORD}@notification_db:5432/notifications
-      JWT_SECRET: ${JWT_SECRET}       # même secret que auth !
-      JWT_ALGORITHM: HS256
+      JWT_SECRET: ${JWT_SECRET}
     ports:
       - "8002:8000"
     depends_on:
@@ -68,10 +95,30 @@ services:
         condition: service_healthy
       auth:
         condition: service_started
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health', timeout=2).status == 200 else 1)",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
     volumes:
       - ./backend/services/notification/:/app:Z
     command:
-      ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+      [
+        "uvicorn",
+        "app.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--reload",
+      ]
 
   # ─── Frontend ──────────────────────────────────────────────────────────────
   frontend:

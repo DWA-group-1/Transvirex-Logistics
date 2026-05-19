@@ -32,7 +32,7 @@ app.add_middleware(
 app.add_middleware(AccessLogMiddleware)
 app.add_middleware(RequestIDMiddleware)
 
-SERVICES = {"auth": settings.auth_url, "notification": settings.notification_url}
+SERVICES = {"auth": settings.auth_url, "notification": settings.notif_url}
 
 HOP_BY_HOP = {
     "connection",
