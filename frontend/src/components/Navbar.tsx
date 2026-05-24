@@ -52,7 +52,7 @@ function Navbar() {
   // Apply saved font size on component mount
   useState(() => {
     document.body.style.fontSize = `${fontSize}%`;
-  }, []);
+  });
 
   return (
     <>

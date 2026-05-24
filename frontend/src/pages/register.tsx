@@ -2,49 +2,67 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Container, Form, Alert } from "react-bootstrap";
+import { register, getCurrentRole } from "../services/api";
 
-// Match the backend used by the running compose stack
-const API_BASE_URL = "http://localhost:8002";
+type Role = "driver" | "dispatcher" | "billing" | "manager";
+
+const ROLE_OPTIONS: { value: Role; label: string }[] = [
+  { value: "driver", label: "Driver" },
+  { value: "dispatcher", label: "Dispatcher" },
+  { value: "billing", label: "Billing" },
+  { value: "manager", label: "Manager" },
+];
 
 function Register() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState<Role>("driver");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Gate the page: only managers may see it
+  const currentRole = getCurrentRole();
+  if (currentRole !== "manager") {
+    return (
+      <Container
+        className="d-flex align-items-center justify-content-center"
+        style={{ minHeight: "100vh" }}
+      >
+        <div className="text-center">
+          <h4 className="mb-3">Access Denied</h4>
+          <p className="text-muted mb-4">
+            Only managers can create new accounts.
+          </p>
+          <Button variant="primary" onClick={() => navigate("/home")}>
+            Back to Dashboard
+          </Button>
+        </div>
+      </Container>
+    );
+  }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
     setSuccess(null);
-    setLoading(true);
 
     if (!email.trim() || !password.trim()) {
-      setError("Please enter both email and password");
-      setLoading(false);
+      setError("Please fill in all fields.");
       return;
     }
 
+    setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        setError(data.detail || "Registration failed");
-        setLoading(false);
-        return;
-      }
-
-      setSuccess("User created — you can now log in.");
-      setLoading(false);
-      setTimeout(() => navigate("/"), 1000);
+      const user = await register(email, password, role);
+      setSuccess(`Account created for ${user.email} (${user.role}).`);
+      setEmail("");
+      setPassword("");
+      setRole("driver");
     } catch (err: any) {
-      setError(err.message || "Connection error. Is the backend running?");
+      setError(err?.message ?? JSON.stringify(err) ?? "Registration failed.");
+    } finally {
       setLoading(false);
     }
   };
@@ -54,7 +72,9 @@ function Register() {
       className="d-flex align-items-center justify-content-center"
       style={{ minHeight: "100vh", maxWidth: "455px" }}
     >
-      <div className="container-fluid h-custom">
+      <div className="container-fluid">
+        <h4 className="mb-4 fw-bold">Create Worker Account</h4>
+
         <Form
           className="border border-dark p-4 rounded-4"
           onSubmit={handleSubmit}
@@ -81,7 +101,7 @@ function Register() {
             <Form.Control
               type="email"
               id="registerEmail"
-              placeholder="email@example.com"
+              placeholder="worker@example.com"
               size="lg"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -96,7 +116,7 @@ function Register() {
             <Form.Control
               type="password"
               id="registerPassword"
-              placeholder="Enter Password Here"
+              placeholder="Set a password for the worker"
               size="lg"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -104,22 +124,41 @@ function Register() {
             />
           </Form.Group>
 
-          <div className="d-flex flex-column align-items-center justify-content-center gap-3">
+          <Form.Group className="mb-4">
+            <Form.Label htmlFor="registerRole" size="lg">
+              Role
+            </Form.Label>
+            <Form.Select
+              id="registerRole"
+              size="lg"
+              value={role}
+              onChange={(e) => setRole(e.target.value as Role)}
+              disabled={loading}
+            >
+              {ROLE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+
+          <div className="d-flex flex-column align-items-center gap-3">
             <Button
               variant="primary"
               size="lg"
               type="submit"
               disabled={loading}
             >
-              {loading ? "Creating..." : "Create Account"}
+              {loading ? "Creating…" : "Create Account"}
             </Button>
             <Button
               variant="secondary"
               size="lg"
-              onClick={() => navigate("/")}
+              onClick={() => navigate("/home")}
               disabled={loading}
             >
-              Back to Login
+              Back to Dashboard
             </Button>
           </div>
         </Form>
