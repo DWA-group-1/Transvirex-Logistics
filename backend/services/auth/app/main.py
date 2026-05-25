@@ -1,16 +1,8 @@
-"""
-Auth Service — FastAPI application.
-Handles user registration, login (OAuth2 password flow), and identity verification.
-"""
-from contextlib import asynccontextmanager
-
 from fastapi import Depends, FastAPI, HTTPException, status
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .config import settings
 from .database import get_db
 from .models import User
 from .schemas import Token, UserCreate, UserOut
@@ -23,27 +15,16 @@ from .security import (
 
 app = FastAPI(title="Auth Service", version="1.0.0")
 
-# ─── CORS ──────────────────────────────────────────────────────────────────
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 # OAuth2 scheme — points to the token endpoint
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 
 
-# ─── Helpers ───────────────────────────────────────────────────────────────
+# ─── Helper ────────────────────────────────────────────────────────────────
+
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db),
+    token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)
 ) -> User:
-    """Decode JWT and return the matching User, or raise 401."""
     payload = decode_access_token(token)
     if payload is None:
         raise HTTPException(
@@ -51,22 +32,20 @@ async def get_current_user(
             detail="Invalid or expired token",
             headers={"WWW-Authenticate": "Bearer"},
         )
-
-    # 'sub' holds the user's numeric ID (set as a string at login)
     user_id = payload.get("sub")
     if not user_id:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token payload",
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload"
         )
 
-    # BUG FIX: query by id, not by the undefined `email` variable
-    result = await db.execute(select(User).filter(User.id == int(user_id)))
+    statement = select(User).where(User.id == int(user_id))
+
+    result = await db.execute(statement)
+
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found"
         )
     return user
 
@@ -79,6 +58,7 @@ async def require_admin(current_user: User = Depends(get_current_user)) -> User:
 
 # ─── Routes ────────────────────────────────────────────────────────────────
 
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -88,15 +68,12 @@ def health():
 async def register(
     user_data: UserCreate,
     db: AsyncSession = Depends(get_db),
-    # Only managers (admins) may create accounts
     _: User = Depends(require_admin),
 ):
-    """
-    Register a new worker account.
-    Requires a valid manager JWT — only admins can create users.
-    """
-    result = await db.execute(select(User).filter(User.email == user_data.email))
-    if result.scalar_one_or_none():
+    # Check for duplicate email
+    result = await db.execute(select(User).where(User.email == user_data.email))
+    existing = result.scalar_one_or_none()
+    if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered",
@@ -105,8 +82,7 @@ async def register(
     new_user = User(
         email=user_data.email,
         hashed_password=hash_password(user_data.password),
-        role=user_data.role,   # BUG FIX: use the requested role, not hardcoded "driver"
-        is_admin=False,
+        role=user_data.role,
     )
     db.add(new_user)
     await db.commit()
@@ -116,15 +92,12 @@ async def register(
 
 @app.post("/token", response_model=Token)
 async def login(
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    db: AsyncSession = Depends(get_db),
+    form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)
 ):
-    """
-    OAuth2 password flow login.
-    Accepts form fields: username (email) and password.
-    Returns a signed JWT access token.
-    """
-    result = await db.execute(select(User).filter(User.email == form_data.username))
+    statement = select(User).where(User.email == form_data.username)
+
+    result = await db.execute(statement)
+
     user = result.scalar_one_or_none()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
@@ -133,6 +106,7 @@ async def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # Encode the user's email as the 'sub' claim
     access_token = create_access_token(
         data={"sub": str(user.id), "role": user.role, "email": user.email}
     )
@@ -143,3 +117,4 @@ async def login(
 async def get_me(current_user: User = Depends(get_current_user)):
     """Return the profile of the currently authenticated user."""
     return current_user
+

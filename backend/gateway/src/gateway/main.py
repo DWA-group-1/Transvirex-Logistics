@@ -1,56 +1,57 @@
-from fastapi import Depends, FastAPI, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+import logging
+from contextlib import asynccontextmanager
 
-from .database import get_db
-from .models import User
-from .schemas import Token, UserCreate, UserOut
-from .security import (
-    create_access_token,
-    decode_access_token,
-    hash_password,
-    verify_password,
+import httpx
+from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
+
+from .auth import extract_token, verify_jwt
+from .config import settings
+from .middleware import AccessLogMiddleware, RequestIDMiddleware
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s"
 )
 
-app = FastAPI(title="Auth Service", version="1.0.0")
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
-
-
-async def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db),
-) -> User:
-    payload = decode_access_token(token)
-    if payload is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    user_id = payload.get("sub")
-    if not user_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token payload",
-        )
-
-    result = await db.execute(select(User).filter(User.id == int(user_id)))
-    user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-        )
-    return user
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.state.http_client = httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=5.0))
+    yield
+    await app.state.http_client.aclose()
 
 
-async def require_admin(current_user: User = Depends(get_current_user)) -> User:
-    if not current_user.is_admin:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Admin access required")
-    return current_user
+app = FastAPI(lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+app.add_middleware(AccessLogMiddleware)
+app.add_middleware(RequestIDMiddleware)
+
+SERVICES = {"auth": settings.auth_url, "notification": settings.notif_url}
+
+HOP_BY_HOP = {
+    "connection",
+    "keep-alive",
+    "proxy-authenticate",
+    "proxy-authorization",
+    "te",
+    "trailers",
+    "transfer-encoding",
+    "upgrade",
+    "host",
+    "content-length",
+}
+
+PUBLIC_PREFIXES = {"auth/token"}
+
+
+def filter_headers(headers):
+    return {k: v for k, v in headers.items() if k.lower() not in HOP_BY_HOP}
 
 
 @app.get("/health")
@@ -58,52 +59,49 @@ def health():
     return {"status": "ok"}
 
 
-@app.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-async def register(
-    user_data: UserCreate,
-    db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
-):
-    result = await db.execute(select(User).filter(User.email == user_data.email))
-    existing = result.scalar_one_or_none()
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered",
+@app.api_route(
+    "/{prefix}/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"]
+)
+async def proxy(prefix: str, path: str, request: Request):
+    if prefix not in SERVICES:
+        raise HTTPException(status_code=404, detail=f"Unknown service: {prefix}")
+
+    full_path = f"{prefix}/{path}"
+    claims = None
+    if full_path not in PUBLIC_PREFIXES:
+        token = extract_token(request.headers.get("Authorization"))
+        claims = verify_jwt(token)
+
+    target_url = f"{SERVICES[prefix]}/{path}"
+    headers = filter_headers(request.headers)
+    headers["X-Request-Id"] = request.state.request_id
+    if claims:
+        headers["X-User-Id"] = str(claims.get("sub", ""))
+        headers["X-User-Role"] = claims.get("role", "")
+        headers["X-User-Email"] = claims.get("email", "")
+
+    client = request.app.state.http_client
+
+    try:
+        upstream_response = await client.request(
+            method=request.method,
+            url=target_url,
+            content=await request.body(),
+            params=request.query_params,
+            headers=headers,
         )
+    except httpx.ConnectError:
+        raise HTTPException(502, "Upstream service unreachable")
+    except httpx.TimeoutException:
+        raise HTTPException(504, "Upstream service timed out")
+    except httpx.RequestError as e:
+        raise HTTPException(502, f"Upstream error: {type(e).__name__}")
 
-    new_user = User(
-        email=user_data.email,
-        hashed_password=hash_password(user_data.password),
-        role=user_data.role,
-        is_admin=False,
+    response_headers = filter_headers(upstream_response.headers)
+
+    return Response(
+        content=upstream_response.content,
+        status_code=upstream_response.status_code,
+        headers=response_headers,
     )
-    db.add(new_user)
-    await db.commit()
-    await db.refresh(new_user)
-    return new_user
 
-
-@app.post("/token", response_model=Token)
-async def login(
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    db: AsyncSession = Depends(get_db),
-):
-    result = await db.execute(select(User).filter(User.email == form_data.username))
-    user = result.scalar_one_or_none()
-    if not user or not verify_password(form_data.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    access_token = create_access_token(
-        data={"sub": str(user.id), "role": user.role, "email": user.email}
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
-
-
-@app.get("/me", response_model=UserOut)
-async def get_me(current_user: User = Depends(get_current_user)):
-    return current_user
