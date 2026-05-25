@@ -1,8 +1,3 @@
-// ─── ProtectedRoute.tsx ─────────────────────────────────────────────────────
-// Drop this file at: src/components/ProtectedRoute.tsx
-//
-// Redirects unauthenticated users to /login and blocks non-managers from /register.
-
 import { Navigate } from "react-router-dom";
 import { isAuthenticated, getCurrentRole } from "../services/api";
 
@@ -11,7 +6,10 @@ interface Props {
   requireManager?: boolean;
 }
 
-function ProtectedRoute({ children, requireManager = false }: Props) {
+export default function ProtectedRoute({
+  children,
+  requireManager = false,
+}: Props) {
   if (!isAuthenticated()) {
     return <Navigate to="/" replace />;
   }
@@ -22,5 +20,3 @@ function ProtectedRoute({ children, requireManager = false }: Props) {
 
   return <>{children}</>;
 }
-
-export default ProtectedRoute;

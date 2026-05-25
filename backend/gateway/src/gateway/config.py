@@ -1,19 +1,15 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_prefix="GATEWAY_",
-        env_file=(".env", "../../.env"),
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
-
-    auth_url: str = "http://localhost:8001"
-    notif_url: str = "http://localhost:8002"
-    cors_origins: list[str] = ["http://localhost:5173", "http://localhost:4173"]
-    jwt_secret: str = "dev-secret-change-me"
+    database_url: str
+    jwt_secret: str
     jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 60
+    cors_origins: list[str] = ["http://localhost:5173", "http://localhost:4173"]
+
+    class Config:
+        env_file = ".env"
 
 
 settings = Settings()

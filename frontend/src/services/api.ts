@@ -1,12 +1,4 @@
-/**
- * API Service — all backend calls go through here.
- * Single source of truth for the base URL and auth headers.
- */
-
-// Change this once if the backend port ever changes — nowhere else needs updating.
-const API_BASE_URL = "http://localhost:8002";
-
-// ─── TYPES ──────────────────────────────────────────────────────────────────
+const API_BASE_URL = "http://localhost:8000";
 
 export interface TokenResponse {
   access_token: string;
@@ -18,8 +10,6 @@ export interface UserOut {
   email: string;
   role: "driver" | "dispatcher" | "billing" | "manager";
 }
-
-// ─── TOKEN MANAGEMENT ───────────────────────────────────────────────────────
 
 export const getAuthToken = (): string | null =>
   localStorage.getItem("authToken");
@@ -33,10 +23,6 @@ export const clearAuthToken = (): void => {
   localStorage.removeItem("userRole");
 };
 
-/**
- * Decode the JWT payload (no signature verification — that's the backend's job).
- * Returns null if the token is missing or malformed.
- */
 export const decodeTokenPayload = (): Record<string, any> | null => {
   const token = getAuthToken();
   if (!token) return null;
@@ -48,24 +34,17 @@ export const decodeTokenPayload = (): Record<string, any> | null => {
   }
 };
 
-/** Returns the current user's role from the stored JWT, or null if not logged in. */
 export const getCurrentRole = (): UserOut["role"] | null => {
   const payload = decodeTokenPayload();
   return (payload?.role as UserOut["role"]) ?? null;
 };
 
-/** True when a valid token is present (does not re-validate with the server). */
 export const isAuthenticated = (): boolean => {
   const payload = decodeTokenPayload();
   if (!payload?.exp) return false;
   return payload.exp * 1000 > Date.now();
 };
 
-// ─── AUTH API CALLS ─────────────────────────────────────────────────────────
-
-/**
- * Login — returns and stores the access token.
- */
 export const login = async (
   email: string,
   password: string
@@ -74,7 +53,7 @@ export const login = async (
   formData.append("username", email);
   formData.append("password", password);
 
-  const response = await fetch(`${API_BASE_URL}/token`, {
+  const response = await fetch(`${API_BASE_URL}/auth/token`, {
     method: "POST",
     body: formData,
   });
@@ -87,7 +66,6 @@ export const login = async (
   const data: TokenResponse = await response.json();
   setAuthToken(data.access_token);
 
-  // Cache role so UI can gate features without an extra round-trip
   const payload = decodeTokenPayload();
   if (payload?.role) localStorage.setItem("userRole", payload.role);
   if (payload?.email) localStorage.setItem("userEmail", payload.email);
@@ -95,10 +73,6 @@ export const login = async (
   return data;
 };
 
-/**
- * Register a new worker account.
- * Requires a manager JWT — the backend will reject the request otherwise.
- */
 export const register = async (
   email: string,
   password: string,
@@ -107,7 +81,7 @@ export const register = async (
   const token = getAuthToken();
   if (!token) throw new Error("You must be logged in as a manager to create accounts.");
 
-  const response = await fetch(`${API_BASE_URL}/register`, {
+  const response = await fetch(`${API_BASE_URL}/auth/register`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -124,14 +98,11 @@ export const register = async (
   return response.json();
 };
 
-/**
- * Fetch the profile of the currently authenticated user.
- */
 export const getCurrentUser = async (): Promise<UserOut> => {
   const token = getAuthToken();
   if (!token) throw new Error("No authentication token found");
 
-  const response = await fetch(`${API_BASE_URL}/me`, {
+  const response = await fetch(`${API_BASE_URL}/auth/me`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 
@@ -147,8 +118,6 @@ export const healthCheck = async (): Promise<boolean> => {
     return false;
   }
 };
-
-// ─── GENERIC AUTHENTICATED HELPER ───────────────────────────────────────────
 
 export const apiCall = async (
   endpoint: string,
