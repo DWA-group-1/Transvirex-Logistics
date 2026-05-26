@@ -231,6 +231,21 @@ test-auth:
 test-notif:
 	$(COMPOSE) exec notification pytest
 
+logs-catalog:
+	$(COMPOSE) logs -f catalog
+
+logs-catalog-db:
+	$(COMPOSE) logs -f catalog_db
+
+shell-catalog:
+	$(COMPOSE) exec catalog sh
+
+psql-catalog:
+	$(COMPOSE) exec catalog_db sh -c 'psql -U $$POSTGRES_USER -d $$POSTGRES_DB'
+
+migrate-catalog:
+	$(COMPOSE) exec catalog alembic upgrade head
+
 lint:
 	cd $(AUTH_DIR)    && uv run ruff check .
 	cd $(NOTIF_DIR)   && uv run ruff check .
