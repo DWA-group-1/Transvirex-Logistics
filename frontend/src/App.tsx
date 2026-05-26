@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useState } from "react";
+import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
 import Login from "./pages/login";
@@ -7,53 +8,42 @@ import TrackInvoices from "./pages/TrackInvoices";
 import TrackOrders from "./pages/TrackOrders";
 import PlanRoutes from "./pages/PlanRoutes";
 import ProtectedRoute from "./components/ProtectedRoute";
+import "./App.css";
+
+// Layout wrapper — renders Navbar once + child page below
+function ProtectedLayout({ isDark, onToggleTheme }: { isDark: boolean; onToggleTheme: () => void }) {
+  return (
+    <ProtectedRoute>
+      <Navbar isDark={isDark} onToggleTheme={onToggleTheme} />
+      <Outlet />
+    </ProtectedRoute>
+  );
+}
 
 function App() {
+  const [isDark, setIsDark] = useState(false);
+
+  // Apply theme globally — must be on <html> so Bootstrap portals (Offcanvas) inherit it
+  document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
+  document.documentElement.setAttribute("data-bs-theme", isDark ? "dark" : "light");
+
+  const toggleTheme = () => setIsDark((p) => !p);
+
   return (
     <BrowserRouter>
       <Routes>
         {/* Public */}
         <Route path="/" element={<Login />} />
 
-        {/* Protected — any authenticated user */}
-        <Route
-          path="/home"
-          element={
-            <ProtectedRoute>
-              <Navbar />
-              <Home />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/track-orders"
-          element={
-            <ProtectedRoute>
-              <Navbar />
-              <TrackOrders />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/track-invoices"
-          element={
-            <ProtectedRoute>
-              <Navbar />
-              <TrackInvoices />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/plan-routes"
-          element={
-            <ProtectedRoute>
-              <Navbar />
-              <PlanRoutes />
-            </ProtectedRoute>
-          }
-        />
+        {/* Protected — Navbar rendered once via layout */}
+        <Route element={<ProtectedLayout isDark={isDark} onToggleTheme={toggleTheme} />}>
+          <Route path="/home"           element={<Home />} />
+          <Route path="/track-orders"   element={<TrackOrders />} />
+          <Route path="/track-invoices" element={<TrackInvoices />} />
+          <Route path="/plan-routes"    element={<PlanRoutes />} />
+        </Route>
 
-        {/* Manager-only */}
+        {/* Manager-only — no Navbar needed on register */}
         <Route
           path="/register"
           element={
