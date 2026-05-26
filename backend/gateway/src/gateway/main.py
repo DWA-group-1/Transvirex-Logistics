@@ -104,3 +104,4 @@ async def proxy(prefix: str, path: str, request: Request):
         status_code=upstream_response.status_code,
         headers=response_headers,
     )
+

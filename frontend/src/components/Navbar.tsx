@@ -4,11 +4,11 @@ import { useState } from "react";
 import { Nav, Offcanvas } from "react-bootstrap";
 
 const navItems = [
-  { label: "Dashboard", icon: "bi-speedometer2" },
-  { label: "Track Orders", icon: "bi-truck" },
-  { label: "Plan Routes", icon: "bi-map" },
-  { label: "Invoices", icon: "bi-currency-dollar" },
-  { label: "Settings", icon: "bi-gear" },
+  { label: "Dashboard", icon: "bi-speedometer2", path: "/home" },
+  { label: "Track Orders", icon: "bi-truck", path: "/track-orders" },
+  { label: "Plan Routes", icon: "bi-map", path: "/plan-routes" },
+  { label: "Invoices", icon: "bi-currency-dollar", path: "/track-invoices" },
+  // { label: "Settings", icon: "bi-gear", path: "/settings" },
 ];
 
 function Navbar() {
@@ -52,7 +52,7 @@ function Navbar() {
   // Apply saved font size on component mount
   useState(() => {
     document.body.style.fontSize = `${fontSize}%`;
-  }, []);
+  });
 
   return (
     <>
@@ -88,7 +88,7 @@ function Navbar() {
                 className="d-inline-flex align-items-center m-0"
               >
                 <img
-                  src="leaf-svgrepo-com.svg"
+                  src="/leaf-svgrepo-com.svg"
                   height="40"
                   className="me-2"
                   alt="Logo"
@@ -170,7 +170,8 @@ function Navbar() {
             {navItems.map((item) => (
               <Nav.Link
                 key={item.label}
-                href={`#${item.label.toLowerCase()}`}
+                as={Link}
+                to={item.path}
                 className="text-white py-3 border-bottom"
                 onClick={handleClose}
                 style={{

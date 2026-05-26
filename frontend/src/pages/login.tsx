@@ -1,17 +1,33 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Button, Card, Col, Container, Form, Row } from "react-bootstrap";
+import { useNavigate } from "react-router-dom";
+import { Button, Container, Form, Alert } from "react-bootstrap";
+import { login } from "../services/api";
 
 function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (email.trim() && password.trim()) {
+    setError(null);
+
+    if (!email.trim() || !password.trim()) {
+      setError("Please enter both email and password.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await login(email, password);
       navigate("/home");
+    } catch (err: any) {
+      setError(err.message || "Connection error. Is the backend running?");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -21,78 +37,75 @@ function Login() {
       style={{ minHeight: "100vh", maxWidth: "455px" }}
     >
       <div className="container-fluid h-custom">
-        <div className="row d-flex justify-content-center align-items-center">
-          <div className="col-md-15 col-lg-20 col-xl-30">
-            <div
-              className="d-flex align-items-center gap-15 mb-4"
-              style={{ whiteSpace: "nowrap" }}
-            >
-              <img
-                src="leaf-svgrepo-com.svg"
-                height="65"
-                className="me-3"
-                alt="Logo"
-                style={{
-                  filter: "none",
-                }}
-              />
-              <span
-                className="fw-bold"
-                style={{
-                  color: "#000000",
-                  fontSize: "2.2rem",
-                }}
-              >
-                Transvirex Logistics
-              </span>
-            </div>
-          </div>
+        {/* Brand header */}
+        <div
+          className="d-flex align-items-center gap-3 mb-4"
+          style={{ whiteSpace: "nowrap" }}
+        >
+          <img
+            src="/leaf-svgrepo-com.svg"
+            height="65"
+            className="me-3"
+            alt="Logo"
+          />
+          <span
+            className="fw-bold"
+            style={{ color: "#000000", fontSize: "2.2rem" }}
+          >
+            Transvirex Logistics
+          </span>
         </div>
-        <Form className="border border-dark p-4 rounded-4">
+
+        <Form
+          className="border border-dark p-4 rounded-4"
+          onSubmit={handleSubmit}
+        >
+          {error && (
+            <Alert variant="danger" onClose={() => setError(null)} dismissible>
+              {error}
+            </Alert>
+          )}
+
           <Form.Group className="mb-4">
             <Form.Label htmlFor="inputEmail" size="lg">
               Email
             </Form.Label>
             <Form.Control
               className="border border-dark rounded-3"
-              type="Email"
+              type="email"
               id="inputEmail"
               placeholder="email@example.com"
-              aria-describedby="HelpConfigureEmailBlock"
               size="lg"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-            ></Form.Control>
-            <Form.Text id="HelpConfigureEmailBlock">
-              Valid Email starting with username followed by @ followed by email
-              followed by ".com"
-            </Form.Text>
+              disabled={loading}
+            />
           </Form.Group>
 
           <Form.Group className="mb-4">
-            <Form.Label htmlFor="inputPassword5" size="lg">
+            <Form.Label htmlFor="inputPassword" size="lg">
               Password
             </Form.Label>
             <Form.Control
               className="border border-dark rounded-3"
               type="password"
-              id="inputPassword5"
-              placeholder="Enter Password Here"
-              aria-describedby="HelpConfigurePasswordBlock"
+              id="inputPassword"
+              placeholder="Enter your password"
               size="lg"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-            ></Form.Control>
-            <Form.Text id="HelpConfigurePasswordBlock">
-              Your password must be 8-20 characters long, contain letters and
-              numbers, and must not contain spaces, special characters, or
-              emoji.
-            </Form.Text>
+              disabled={loading}
+            />
           </Form.Group>
 
-          <div className="d-flex flex-column align-items-center justify-content-center gap-3">
-            <Button variant="primary" size="lg" onClick={handleSubmit}>
-              Login
+          <div className="d-flex flex-column align-items-center gap-3">
+            <Button
+              variant="primary"
+              size="lg"
+              type="submit"
+              disabled={loading}
+            >
+              {loading ? "Logging in…" : "Login"}
             </Button>
           </div>
         </Form>

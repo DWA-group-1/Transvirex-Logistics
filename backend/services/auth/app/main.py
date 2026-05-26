@@ -1,12 +1,9 @@
-from contextlib import asynccontextmanager
-
 from fastapi import Depends, FastAPI, HTTPException, status
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .database import Base, engine, get_db
+from .database import get_db
 from .models import User
 from .schemas import Token, UserCreate, UserOut
 from .security import (
@@ -45,7 +42,7 @@ async def get_current_user(
 
     result = await db.execute(statement)
 
-    user = result.scalars().first()
+    user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found"
@@ -97,16 +94,11 @@ async def register(
 async def login(
     form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)
 ):
-    """
-    OAuth2 password flow login.
-    Accepts form fields: username (email) and password.
-    Returns a signed JWT access token.
-    """
     statement = select(User).where(User.email == form_data.username)
 
     result = await db.execute(statement)
 
-    user = result.scalars().first()
+    user = result.scalar_one_or_none()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -125,3 +117,4 @@ async def login(
 async def get_me(current_user: User = Depends(get_current_user)):
     """Return the profile of the currently authenticated user."""
     return current_user
+
