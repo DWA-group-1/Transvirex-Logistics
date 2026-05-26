@@ -8,6 +8,7 @@ services:
       GATEWAY_NOTIF_URL: http://notification:8000
       GATEWAY_CATALOG_URL: http://catalog:8000
       GATEWAY_JWT_ALGORITHM: ${JWT_ALGORITHM}
+      GATEWAY_CATALOG_URL: http://catalog:8000
       GATEWAY_CORS_ORIGINS: '["http://localhost:5173","http://localhost:4173"]'
     ports:
       - "8000:8000"
