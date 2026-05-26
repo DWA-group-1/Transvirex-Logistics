@@ -2,6 +2,7 @@ services:
   # ─── Gateway ────────────────────────────────────────────────────────────────────────
   gateway:
     build: ./backend/gateway
+    container_name: transvirex-gateway
     environment:
       GATEWAY_AUTH_URL: http://auth:8000
       GATEWAY_NOTIF_URL: http://notification:8000
@@ -15,9 +16,24 @@ services:
       notification:
         condition: service_healthy
 
+  # ─── Redis ──────────────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: transvirex-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - default
   # ─── PostgreSQL - AuthDB ────────────────────────────────────────────────────────────
   auth_db:
     image: postgres:17-alpine
+    container_name: auth-db
     environment:
       POSTGRES_USER: ${AUTH_DB_USER}
       POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD}
@@ -34,6 +50,7 @@ services:
   # ─── Auth Service ──────────────────────────────────────────────────────────
   auth:
     build: ./backend/services/auth
+    container_name: transvirex-auth
     environment:
       DATABASE_URL: postgresql+psycopg://${AUTH_DB_USER}:${AUTH_DB_PASSWORD}@auth_db:5432/authentication
       JWT_SECRET: ${JWT_SECRET}
@@ -70,6 +87,7 @@ services:
   # ─── PostgreSQL - NotificationDB ──────────────────────────────────────────
   notification_db:
     image: postgres:17-alpine
+    container_name: notif-db
     environment:
       POSTGRES_USER: ${NOTIF_DB_USER}
       POSTGRES_PASSWORD: ${NOTIF_DB_PASSWORD}
@@ -85,13 +103,17 @@ services:
   # ─── Notification Service ─────────────────────────────────────────────────
   notification:
     build: ./backend/services/notification
+    container_name: transvirex-notif
     environment:
       DATABASE_URL: postgresql+psycopg://${NOTIF_DB_USER}:${NOTIF_DB_PASSWORD}@notification_db:5432/notifications
       JWT_SECRET: ${JWT_SECRET}
+      REDIS_URL: "redis://redis:6379"
     ports:
       - "8002:8000"
     depends_on:
       notification_db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       auth:
         condition: service_started

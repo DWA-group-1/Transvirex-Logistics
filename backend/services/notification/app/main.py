@@ -1,3 +1,6 @@
+import logging
+from contextlib import asynccontextmanager
+
 from fastapi import (
     Depends,
     FastAPI,
@@ -8,17 +11,37 @@ from fastapi import (
     WebSocketDisconnect,
     status,
 )
-from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .config import settings
 from .database import get_db
+from .events import EventBus
+from .handlers import register_event_handlers
 from .manager import manager
 from .models import Notification
 from .schemas import MarkReadRequest, NotificationCreate, NotificationOut
 from .security import decode_access_token
 
-app = FastAPI(title="Notification Service", version="1.0.0")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    bus = EventBus(settings.redis_url, producer_name="notification")
+    register_event_handlers(bus)
+    await bus.start()
+    app.state.bus = bus
+    try:
+        yield
+    finally:
+        await bus.stop()
+
+
+app = FastAPI(title="Notification Service", version="1.0.0", lifespan=lifespan)
 
 # ─── Utils ─────────────────────────────────────────────────────────────────
 
