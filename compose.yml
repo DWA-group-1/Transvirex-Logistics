@@ -106,6 +106,7 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://${NOTIF_DB_USER}:${NOTIF_DB_PASSWORD}@notification_db:5432/notifications
       JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
       REDIS_URL: "redis://redis:6379"
     depends_on:
       notification_db:
@@ -163,6 +164,7 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://${CATALOG_DB_USER}:${CATALOG_DB_PASSWORD}@catalog_db:5432/catalog
       JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
       REDIS_URL: "redis://redis:6379"
       AUTH_INTERNAL_URL: "http://auth:8000"
     depends_on:
