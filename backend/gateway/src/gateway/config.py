@@ -19,5 +19,5 @@ class Settings(BaseSettings):
     def public_key(self) -> str:
         return self.jwt_public_key.replace("\\n", "\n")
 
-settings = Settings()
 
+settings = Settings()
