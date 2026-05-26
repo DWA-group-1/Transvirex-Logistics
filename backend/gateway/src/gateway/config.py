@@ -12,12 +12,16 @@ class Settings(BaseSettings):
     auth_url: str = "http://localhost:8001"
     notif_url: str = "http://localhost:8002"
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:4173"]
+<<<<<<< HEAD
     jwt_public_key: str
     jwt_algorithm: str = "RS256"
+=======
+    jwt_secret: str
+    jwt_algorithm: str = "HS256"
+>>>>>>> 1e68c75 (feat(catalog): Base Catalog)
 
     @property
     def public_key(self) -> str:
         return self.jwt_public_key.replace("\\n", "\n")
 
 settings = Settings()
-
