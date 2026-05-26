@@ -49,13 +49,13 @@ function Navbar() {
 
   return (
     <>
-      {/* ── Barre flottante ───────────────────────────────────────────── */}
+      {/* ── Floating bar ───────────────────────────────────────────── */}
       <div style={{
         position: "sticky",
         top: 12,
         zIndex: 1030,
         padding: "0 16px",
-        pointerEvents: "none",   // laisse les clics passer sur le fond
+        pointerEvents: "none",
       }}>
         <nav style={{
           pointerEvents: "all",
@@ -94,12 +94,12 @@ function Navbar() {
             </span>
           </Link>
 
-          {/* ── Liens desktop (masqués ≤ 900px) ──────────────────────── */}
+          {/* ── Links desktop (hidden ≤ 900px) ──────────────────────── */}
           <div style={{
             display: "flex",
             alignItems: "center",
             gap: 2,
-            // Responsive via className + CSS global — voir <style> ci-dessous
+            // Responsive through className + CSS global — see <style> under
           }} className="nav-desktop-links">
             {navItems.map((item) => {
               const active = location.pathname === item.path;
@@ -138,14 +138,14 @@ function Navbar() {
             })}
           </div>
 
-          {/* ── Droite : A± + burger ──────────────────────────────────── */}
+          {/* ── Right : A± + burger ──────────────────────────────────── */}
           <div style={{ display: "flex", alignItems: "center", gap: 4, paddingRight: 4 }}>
 
-            {/* Contrôles taille — masqués ≤ 600px */}
+            {/* Size control — hidden ≤ 600px */}
             <div
               className="nav-a11y-group"
               role="group"
-              aria-label="Taille du texte"
+              aria-label="Font Size"
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -207,7 +207,7 @@ function Navbar() {
         }
       `}</style>
 
-      {/* ── Drawer latéral ───────────────────────────────────────────────── */}
+      {/* ── Side drawer ───────────────────────────────────────────────── */}
       <Offcanvas
         show={showMenu}
         onHide={handleClose}
@@ -259,7 +259,7 @@ function Navbar() {
             })}
           </Nav>
 
-          {/* Contrôles taille dans le drawer (mobile) */}
+          {/* Drawer size control */}
           <div style={{
             marginTop: "1.5rem",
             padding: "1rem",
@@ -267,7 +267,7 @@ function Navbar() {
             borderRadius: 12,
           }}>
             <p style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".06em", color: "#888", marginBottom: 10, fontWeight: 600 }}>
-              Taille du texte
+              Font Size
             </p>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <button onClick={decreaseFontSize} aria-label="Réduire" style={drawerA11yBtn}>A−</button>
