@@ -32,7 +32,11 @@ app.add_middleware(
 app.add_middleware(AccessLogMiddleware)
 app.add_middleware(RequestIDMiddleware)
 
-SERVICES = {"auth": settings.auth_url, "notification": settings.notif_url}
+SERVICES = {
+    "auth": settings.auth_url,
+    "notification": settings.notif_url,
+    "catalog": settings.catalog_url,
+}
 
 HOP_BY_HOP = {
     "connection",
@@ -104,4 +108,3 @@ async def proxy(prefix: str, path: str, request: Request):
         status_code=upstream_response.status_code,
         headers=response_headers,
     )
-
