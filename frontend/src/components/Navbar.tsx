@@ -69,7 +69,7 @@ function Navbar({ isDark, onToggleTheme }: NavbarProps) {
           pointerEvents: "all",
           background: "var(--bg-color)",
           borderRadius: 50,
-          boxShadow: "0 2px 16px rgba(0,0,0,.08)",
+          boxShadow: "0 2px 16px color-mix(in srgb, var(--font-color) 10%, transparent)",
           padding: "0 8px",
           height: 56,
           display: "flex",
