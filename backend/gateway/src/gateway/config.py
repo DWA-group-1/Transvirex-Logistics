@@ -9,9 +9,9 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    auth_url: str = "http://localhost:8001"
-    notif_url: str = "http://localhost:8002"
-    catalog_url: str = "http://localhost:8003"
+    auth_url: str = "http://auth:8000"
+    notif_url: str = "http://notification:8000"
+    catalog_url: str = "http://catalog:8000"
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:4173"]
     jwt_secret: str
     jwt_algorithm: str = "HS256"
