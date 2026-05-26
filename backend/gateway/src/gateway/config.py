@@ -11,6 +11,7 @@ class Settings(BaseSettings):
 
     auth_url: str = "http://localhost:8001"
     notif_url: str = "http://localhost:8002"
+    catalog_url: str = "http://localhost:8003"
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:4173"]
 <<<<<<< HEAD
     jwt_public_key: str

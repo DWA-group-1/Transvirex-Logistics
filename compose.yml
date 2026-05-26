@@ -8,6 +8,7 @@ services:
       GATEWAY_NOTIF_URL: http://notification:8000
       GATEWAY_JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
       GATEWAY_JWT_ALGORITHM: ${JWT_ALGORITHM}
+      GATEWAY_CATALOG_URL: http://catalog:8000
       GATEWAY_CORS_ORIGINS: '["http://localhost:5173","http://localhost:4173"]'
     ports:
       - "8000:8000"
@@ -15,6 +16,8 @@ services:
       auth:
         condition: service_healthy
       notification:
+        condition: service_healthy
+      catalog:
         condition: service_healthy
 
   # ─── Redis ──────────────────────────────────────────────────────────────────────────
@@ -72,7 +75,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
-      start_period: 10s
+      start_period: 30s
     ports:
       - "8001:8000"
     volumes:
@@ -120,7 +123,7 @@ services:
       redis:
         condition: service_healthy
       auth:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test:
         [
@@ -132,7 +135,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
-      start_period: 10s
+      start_period: 30s
     volumes:
       - ./backend/services/notification/:/app:Z
     command:
@@ -144,6 +147,67 @@ services:
         "--port",
         "8000",
         "--reload",
+      ]
+
+  # ─── PostgreSQL - CatalogDB ──────────────────────────────────────────
+  catalog_db:
+    image: postgres:17-alpine
+    container_name: catalog-db
+    environment:
+      POSTGRES_USER: ${CATALOG_DB_USER}
+      POSTGRES_PASSWORD: ${CATALOG_DB_PASSWORD}
+      POSTGRES_DB: catalog
+    volumes:
+      - catalog_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${CATALOG_DB_USER} -d catalog"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ─── Catalog Service ─────────────────────────────────────────────────
+  catalog:
+    build: ./backend/services/catalog
+    container_name: transvirex-catalog
+    environment:
+      DATABASE_URL: postgresql+psycopg://${CATALOG_DB_USER}:${CATALOG_DB_PASSWORD}@catalog_db:5432/catalog
+      JWT_SECRET: ${JWT_SECRET}
+      REDIS_URL: "redis://redis:6379"
+      AUTH_INTERNAL_URL: "http://auth:8000"
+    ports:
+      - "8003:8000"
+    depends_on:
+      catalog_db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      auth:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health', timeout=2).status == 200 else 1)",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - ./backend/services/catalog/:/app:Z
+    command:
+      [
+        "uvicorn",
+        "app.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--reload",
+        "--reload-dir",
+        "app",
       ]
 
   # ─── Frontend ──────────────────────────────────────────────────────────────
@@ -174,3 +238,4 @@ services:
 volumes:
   auth_pgdata:
   notif_pgdata:
+  catalog_pgdata:
