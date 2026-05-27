@@ -6,13 +6,15 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .database import get_db
-from .models import User
-from .schemas import Token, UserCreate, UserOut
+from .models import User, RefreshToken
+from .schemas import Token, UserCreate, UserOut, TokenPair, RefreshRequest
 from .security import (
     create_access_token,
     decode_access_token,
     hash_password,
     verify_password,
+    create_refresh_token,
+    get_refresh_token_expiry,
 )
 
 app = FastAPI(title="Auth Service", version="1.0.0")
@@ -99,7 +101,7 @@ async def register(
     return new_user
 
 
-@app.post("/token", response_model=Token)
+@app.post("/token", response_model=TokenPair)
 async def login(
     form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)
 ):
@@ -119,7 +121,21 @@ async def login(
     access_token = create_access_token(
         data={"sub": str(user.id), "role": user.role, "email": user.email}
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+
+    # Create and store refresh token
+    raw_refresh = create_refresh_token()
+    db.add(RefreshToken(
+        token=raw_refresh,
+        user_id=user.id,
+        expires_at=get_refresh_token_expiry(),
+    ))
+    await db.commit()
+
+    return {
+        "access_token": access_token,
+        "refresh_token": raw_refresh,
+        "token_type": "bearer",
+    }
 
 
 @app.get("/me", response_model=UserOut)
@@ -146,3 +162,44 @@ async def delete_user(
     await db.commit()
 
     return None
+
+@app.post("/token/refresh", response_model=Token)
+async def refresh_token(
+    body: RefreshRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(RefreshToken).where(RefreshToken.token == body.refresh_token)
+    )
+    stored = result.scalar_one_or_none()
+
+    if not stored or stored.revoked:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Refresh token invalide")
+
+    if stored.expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Refresh token expiré")
+
+    # Charger l'utilisateur
+    user_result = await db.execute(select(User).where(User.id == stored.user_id))
+    user = user_result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Utilisateur introuvable")
+
+    # Émettre un nouvel access token
+    new_access = create_access_token(
+        data={"sub": str(user.id), "role": user.role, "email": user.email}
+    )
+    return {"access_token": new_access, "token_type": "bearer"}
+
+@app.post("/token/revoke", status_code=status.HTTP_204_NO_CONTENT)
+async def revoke_token(
+    body: RefreshRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(RefreshToken).where(RefreshToken.token == body.refresh_token)
+    )
+    stored = result.scalar_one_or_none()
+    if stored:
+        stored.revoked = True
+        await db.commit()

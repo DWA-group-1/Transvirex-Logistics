@@ -2,6 +2,7 @@ const API_BASE_URL = "http://localhost:8000";
 
 export interface TokenResponse {
   access_token: string;
+  refresh_token: string;
   token_type: string;
 }
 
@@ -19,9 +20,16 @@ export const setAuthToken = (token: string): void =>
 
 export const clearAuthToken = (): void => {
   localStorage.removeItem("authToken");
+  localStorage.removeItem("refreshToken");
   localStorage.removeItem("userEmail");
   localStorage.removeItem("userRole");
 };
+
+export const getRefreshToken = (): string | null =>
+  localStorage.getItem("refreshToken");
+
+export const setRefreshToken = (token: string): void =>
+  localStorage.setItem("refreshToken", token);
 
 export const decodeTokenPayload = (): Record<string, any> | null => {
   const token = getAuthToken();
@@ -64,9 +72,12 @@ export const login = async (
   }
 
   const data: TokenResponse = await response.json();
+
   setAuthToken(data.access_token);
+  setRefreshToken(data.refresh_token);
 
   const payload = decodeTokenPayload();
+
   if (payload?.role) localStorage.setItem("userRole", payload.role);
   if (payload?.email) localStorage.setItem("userEmail", payload.email);
 
@@ -122,24 +133,84 @@ export const healthCheck = async (): Promise<boolean> => {
 export const apiCall = async (
   endpoint: string,
   method = "GET",
-  body?: unknown
+  body?: unknown,
+  retry = true
 ): Promise<any> => {
   const token = getAuthToken();
+
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
-  if (token) headers.Authorization = `Bearer ${token}`;
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  let response = await fetch(`${API_BASE_URL}${endpoint}`, {
     method,
     headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
+  if (response.status === 401 && retry) {
+    const newAccessToken = await refreshAccessToken();
+
+    response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method,
+      headers: {
+        ...headers,
+        Authorization: `Bearer ${newAccessToken}`,
+      },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  }
+
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || `API call failed: ${response.statusText}`);
+    let message = `API call failed: ${response.statusText}`;
+
+    try {
+      const error = await response.json();
+      message = error.detail || message;
+    } catch {
+      // Ignore JSON parsing error
+    }
+
+    throw new Error(message);
   }
 
   return response.json();
+};
+
+export const refreshAccessToken = async (): Promise<string> => {
+  const refreshToken = getRefreshToken();
+
+  if (!refreshToken) {
+    clearAuthToken();
+    throw new Error("No refresh token found");
+  }
+
+  const response = await fetch(`${API_BASE_URL}/token/refresh`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      refresh_token: refreshToken,
+    }),
+  });
+
+  if (!response.ok) {
+    clearAuthToken();
+    throw new Error("Session expired. Please log in again.");
+  }
+
+  const data: TokenResponse = await response.json();
+
+  setAuthToken(data.access_token);
+
+  if (data.refresh_token) {
+    setRefreshToken(data.refresh_token);
+  }
+
+  return data.access_token;
 };
