@@ -33,7 +33,10 @@ function App() {
     <BrowserRouter>
       <Routes>
         {/* Public */}
-        <Route path="/" element={<Login />} />
+        <Route
+          path="/"
+          element={<Login isDark={isDark} onToggleTheme={toggleTheme} />}
+        />
 
         {/* Protected — Navbar rendered once via layout */}
         <Route element={<ProtectedLayout isDark={isDark} onToggleTheme={toggleTheme} />}>
