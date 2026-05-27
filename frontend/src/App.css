@@ -1,1 +1,22 @@
 /* CSS of the App */
+:root{
+    --font-color: #000;
+    --bg-color: #F5F5F5;
+    --hover-color: #DFF1F1;
+    --selected-color: #BBD5DA;
+    --main-color: #FF0000;
+}
+
+[data-theme="dark"] {
+  --font-color: #F0F0F0;
+  --bg-color: #1E1E1E;
+  --hover-color: #2A3A3A;
+  --selected-color: #3A4A4A;
+  --main-color: #FF4D4D;
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--font-color);
+  transition: background-color 0.2s, color 0.2s;
+}
