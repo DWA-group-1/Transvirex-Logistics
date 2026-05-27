@@ -4,7 +4,7 @@
     --bg-color: #F5F5F5;
     --hover-color: #DFF1F1;
     --selected-color: #BBD5DA;
-    --main-color: #FF0000;
+    --main-color: #E2725B;
 }
 
 [data-theme="dark"] {
@@ -12,7 +12,7 @@
   --bg-color: #1E1E1E;
   --hover-color: #2A3A3A;
   --selected-color: #3A4A4A;
-  --main-color: #FF4D4D;
+  --main-color: #E2725B;
 }
 
 body {

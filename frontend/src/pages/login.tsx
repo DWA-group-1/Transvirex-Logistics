@@ -53,25 +53,6 @@ function Login({ isDark, onToggleTheme }: LoginProps) {
           overflow: hidden;
         }
 
-        .glass-shape {
-          width: 200px;
-          height: 200px;
-          border-radius: 50%;
-          position: absolute;
-        }
-
-        .glass-shape--blue {
-          background: var(--main-color);
-          left: calc(50% + 15px);
-          top: calc(50% - 330px);
-        }
-
-        .glass-shape--orange {
-          background: var(--main-color);
-          left: calc(50% - 215px);
-          top: calc(50% + 130px);
-        }
-
         .glass-card {
           position: relative;
           z-index: 2;
@@ -92,19 +73,9 @@ function Login({ isDark, onToggleTheme }: LoginProps) {
           margin-bottom: 28px;
         }
 
-        .glass-brand-icon {
-          width: 38px;
-          height: 38px;
-          border-radius: 8px;
-          background: color-mix(in srgb, var(--main-color) 80%, transparent);
-          display: grid;
-          place-items: center;
-          flex-shrink: 0;
-        }
-
         .glass-brand-icon img {
-          height: 20px;
-          filter: brightness(0) invert(1);
+            height: 40px;
+            filter: invert(48%) sepia(79%) saturate(476%) hue-rotate(86deg) brightness(95%) contrast(90%);
         }
 
         .glass-brand-name {
@@ -313,14 +284,17 @@ function Login({ isDark, onToggleTheme }: LoginProps) {
               Email
             </label>
             <div className="glass-input-wrap">
-              <i className="bi bi-envelope glass-input-icon" aria-hidden="true" />
+              <i
+                className="bi bi-envelope glass-input-icon"
+                aria-hidden="true"
+              />
               <input
                 id="inputEmail"
                 type="email"
                 placeholder="Email or Phone"
                 autoComplete="email"
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={(e) => setEmail(e.target.value)}
                 disabled={loading}
                 className="glass-input"
               />
@@ -338,17 +312,20 @@ function Login({ isDark, onToggleTheme }: LoginProps) {
                 placeholder="Password"
                 autoComplete="current-password"
                 value={password}
-                onChange={e => setPassword(e.target.value)}
+                onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
                 className="glass-input glass-input--pw"
               />
               <button
                 type="button"
                 className="glass-pw-toggle"
-                onClick={() => setShowPw(p => !p)}
+                onClick={() => setShowPw((p) => !p)}
                 aria-label={showPw ? "Hide password" : "Show password"}
               >
-                <i className={showPw ? "bi bi-eye-slash" : "bi bi-eye"} aria-hidden="true" />
+                <i
+                  className={showPw ? "bi bi-eye-slash" : "bi bi-eye"}
+                  aria-hidden="true"
+                />
               </button>
             </div>
 
@@ -357,19 +334,6 @@ function Login({ isDark, onToggleTheme }: LoginProps) {
               {loading ? "Signing in…" : "Log In"}
             </button>
           </form>
-
-          {/* Theme toggle */}
-          <div className="glass-theme-row">
-            <button
-              type="button"
-              className="glass-theme-btn"
-              onClick={onToggleTheme}
-              aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-            >
-              <i className={isDark ? "bi bi-sun" : "bi bi-moon"} aria-hidden="true" />
-              {isDark ? "Light mode" : "Dark mode"}
-            </button>
-          </div>
         </div>
       </div>
     </>
