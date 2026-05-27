@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy import select
@@ -38,7 +40,14 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload"
         )
 
-    statement = select(User).where(User.id == int(user_id))
+    try:
+        uid = UUID(user_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload"
+        )
+
+    statement = select(User).where(User.id == uid)
 
     result = await db.execute(statement)
 
@@ -106,7 +115,7 @@ async def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Encode the user's email as the 'sub' claim
+    # Encode the user's UUID as the 'sub' claim
     access_token = create_access_token(
         data={"sub": str(user.id), "role": user.role, "email": user.email}
     )
@@ -117,4 +126,3 @@ async def login(
 async def get_me(current_user: User = Depends(get_current_user)):
     """Return the profile of the currently authenticated user."""
     return current_user
-
