@@ -15,6 +15,7 @@ __pychache__/
 .ruff_cache/
 *.pyc
 *.pyo
+*.pem
 
 .vscode/
 .idea/
