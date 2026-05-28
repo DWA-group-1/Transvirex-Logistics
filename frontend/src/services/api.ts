@@ -48,9 +48,17 @@ export const getCurrentRole = (): UserOut["role"] | null => {
 };
 
 export const isAuthenticated = (): boolean => {
-  const payload = decodeTokenPayload();
-  if (!payload?.exp) return false;
-  return payload.exp * 1000 > Date.now();
+  const token = getAuthToken();
+  if (!token) return false;
+
+  try {
+    const payload = decodeTokenPayload();
+    if (!payload?.exp) return false;
+
+    return payload.exp * 1000 > Date.now() + 10_000;
+  } catch {
+    return false;
+  }
 };
 
 export const login = async (

@@ -47,7 +47,7 @@ HOP_BY_HOP = {
     "content-length",
 }
 
-PUBLIC_PREFIXES = {"auth/token"}
+PUBLIC_PREFIXES = {"auth/token", "auth/token/refresh", "auth/token/revoke"}
 
 
 def filter_headers(headers):
@@ -68,9 +68,10 @@ async def proxy(prefix: str, path: str, request: Request):
 
     full_path = f"{prefix}/{path}"
     claims = None
+    client = request.app.state.http_client
     if full_path not in PUBLIC_PREFIXES:
         token = extract_token(request.headers.get("Authorization"))
-        claims = verify_jwt(token)
+        claims = await verify_jwt(token, client)
 
     target_url = f"{SERVICES[prefix]}/{path}"
     headers = filter_headers(request.headers)
@@ -80,7 +81,6 @@ async def proxy(prefix: str, path: str, request: Request):
         headers["X-User-Role"] = claims.get("role", "")
         headers["X-User-Email"] = claims.get("email", "")
 
-    client = request.app.state.http_client
 
     try:
         upstream_response = await client.request(

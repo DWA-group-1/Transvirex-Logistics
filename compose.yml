@@ -6,7 +6,8 @@ services:
     environment:
       GATEWAY_AUTH_URL: http://auth:8000
       GATEWAY_NOTIF_URL: http://notification:8000
-      GATEWAY_JWT_SECRET: ${JWT_SECRET}
+      GATEWAY_JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      GATEWAY_JWT_ALGORITHM: ${JWT_ALGORITHM}
       GATEWAY_CORS_ORIGINS: '["http://localhost:5173","http://localhost:4173"]'
     ports:
       - "8000:8000"
@@ -53,7 +54,8 @@ services:
     container_name: transvirex-auth
     environment:
       DATABASE_URL: postgresql+psycopg://${AUTH_DB_USER}:${AUTH_DB_PASSWORD}@auth_db:5432/authentication
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
     depends_on:
       auth_db:
         condition: service_healthy
