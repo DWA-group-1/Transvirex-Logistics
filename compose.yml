@@ -54,8 +54,10 @@ services:
     container_name: transvirex-auth
     environment:
       DATABASE_URL: postgresql+psycopg://${AUTH_DB_USER}:${AUTH_DB_PASSWORD}@auth_db:5432/authentication
-      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY}
+      JWT_SECRET: ${JWT_SECRET}
       JWT_ALGORITHM: ${JWT_ALGORITHM}
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
     depends_on:
       auth_db:
         condition: service_healthy

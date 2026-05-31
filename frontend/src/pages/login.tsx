@@ -1,14 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { login } from "../services/api";
 
-interface LoginProps {
-  isDark: boolean;
-  onToggleTheme: () => void;
-}
-
-function Login({ isDark, onToggleTheme }: LoginProps) {
+function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -263,8 +258,7 @@ function Login({ isDark, onToggleTheme }: LoginProps) {
               <img src="/leaf-svgrepo-com.svg" alt="" />
             </div>
             <div>
-              <div className="glass-brand-name">Transvirex</div>
-              <div className="glass-brand-sub">Logistics platform</div>
+              <div className="glass-brand-name">Transvirex Logistics</div>
             </div>
           </div>
 
