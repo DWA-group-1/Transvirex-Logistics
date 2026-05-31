@@ -32,7 +32,7 @@ def decode_access_token(token: str) -> dict | None:
     try:
         return jwt.decode(
             token,
-            settings.private_key,
+            settings.public_key,
             algorithms=[settings.jwt_algorithm],
         )
     except jwt.InvalidTokenError:

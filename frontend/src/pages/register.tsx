@@ -13,16 +13,137 @@ const ROLE_OPTIONS: { value: Role; label: string }[] = [
   { value: "manager", label: "Manager" },
 ];
 
+function generatePassword(): string {
+  const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const lower = "abcdefghijklmnopqrstuvwxyz";
+  const digits = "0123456789";
+  const symbols = "!@#$%^&*()-_=+";
+  const all = upper + lower + digits + symbols;
+
+  // Guarantee at least one of each required character type
+  const required = [
+    upper[Math.floor(Math.random() * upper.length)],
+    lower[Math.floor(Math.random() * lower.length)],
+    digits[Math.floor(Math.random() * digits.length)],
+    symbols[Math.floor(Math.random() * symbols.length)],
+  ];
+
+  const rest = Array.from(
+    { length: 8 },
+    () => all[Math.floor(Math.random() * all.length)],
+  );
+
+  // Shuffle so the required chars aren't always at the start
+  return [...required, ...rest].sort(() => Math.random() - 0.5).join("");
+}
+
+interface CreatedCredentials {
+  email: string;
+  password: string;
+  role: Role;
+}
+
+function CredentialsScreen({
+  credentials,
+  onAddAnother,
+}: {
+  credentials: CreatedCredentials;
+  onAddAnother: () => void;
+}) {
+  const navigate = useNavigate();
+  const [copied, setCopied] = useState(false);
+
+  const loginBlock = `Transvirex Logistics — Login Credentials\n\nEmail:    ${credentials.email}\nPassword: ${credentials.password}\nRole:     ${credentials.role}\n\n⚠️  This password is temporary. You will be asked to change it on first login.`;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(loginBlock).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    });
+  };
+
+  return (
+    <Container
+      className="d-flex align-items-center justify-content-center"
+      style={{ minHeight: "100vh", maxWidth: "500px" }}
+    >
+      <div className="container-fluid">
+        <h4 className="mb-4 fw-bold">Account Created</h4>
+
+        <div className="border border-dark p-4 rounded-4">
+          {/* One-time warning */}
+          <Alert variant="warning" className="mb-4">
+            <i className="bi bi-exclamation-triangle-fill me-2" />
+            These credentials are shown <strong>one time only</strong>. Copy
+            them before leaving this screen.
+          </Alert>
+
+          {/* Credentials display */}
+          <div
+            className="rounded-3 p-3 mb-4 font-monospace"
+            style={{
+              background: "var(--bs-secondary-bg, #f8f9fa)",
+              fontSize: 14,
+              lineHeight: 1.8,
+            }}
+          >
+            <div>
+              <span style={{ opacity: 0.6 }}>Email</span>
+              <br />
+              <strong>{credentials.email}</strong>
+            </div>
+            <hr className="my-2" />
+            <div>
+              <span style={{ opacity: 0.6 }}>Temporary password</span>
+              <br />
+              <strong>{credentials.password}</strong>
+            </div>
+            <hr className="my-2" />
+            <div>
+              <span style={{ opacity: 0.6 }}>Role</span>
+              <br />
+              <strong style={{ textTransform: "capitalize" }}>
+                {credentials.role}
+              </strong>
+            </div>
+          </div>
+
+          <p className="text-muted small mb-4">
+            The worker must change this password on their first login.
+          </p>
+
+          <div className="d-flex flex-column gap-3">
+            <Button variant="primary" size="lg" onClick={handleCopy}>
+              <i className="bi bi-clipboard me-2" />
+              {copied ? "Copied!" : "Copy login info"}
+            </Button>
+            <Button variant="outline-primary" size="lg" onClick={onAddAnother}>
+              <i className="bi bi-person-plus me-2" />
+              Add another worker
+            </Button>
+            <Button
+              variant="secondary"
+              size="lg"
+              onClick={() => navigate("/home")}
+            >
+              Back to Dashboard
+            </Button>
+          </div>
+        </div>
+      </div>
+    </Container>
+  );
+}
+
 function Register() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role>("driver");
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [created, setCreated] = useState<CreatedCredentials | null>(null);
 
-  // Gate the page: only managers may see it
   const currentRole = getCurrentRole();
   if (currentRole !== "manager") {
     return (
@@ -43,10 +164,27 @@ function Register() {
     );
   }
 
+  // Show credentials screen after successful creation
+  if (created) {
+    return (
+      <CredentialsScreen
+        credentials={created}
+        onAddAnother={() => {
+          setCreated(null);
+          setEmail("");
+          setPassword("");
+          setRole("driver");
+          setError(null);
+        }}
+      />
+    );
+  }
+
+  const handleGenerate = () => setPassword(generatePassword());
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
-    setSuccess(null);
 
     if (!email.trim() || !password.trim()) {
       setError("Please fill in all fields.");
@@ -55,13 +193,10 @@ function Register() {
 
     setLoading(true);
     try {
-      const user = await register(email, password, role);
-      setSuccess(`Account created for ${user.email} (${user.role}).`);
-      setEmail("");
-      setPassword("");
-      setRole("driver");
+      await register(email, password, role);
+      setCreated({ email, password, role });
     } catch (err: any) {
-      setError(err?.message ?? JSON.stringify(err) ?? "Registration failed.");
+      setError(err.message || "Registration failed.");
     } finally {
       setLoading(false);
     }
@@ -84,15 +219,6 @@ function Register() {
               {error}
             </Alert>
           )}
-          {success && (
-            <Alert
-              variant="success"
-              onClose={() => setSuccess(null)}
-              dismissible
-            >
-              {success}
-            </Alert>
-          )}
 
           <Form.Group className="mb-4">
             <Form.Label htmlFor="registerEmail" size="lg">
@@ -101,7 +227,7 @@ function Register() {
             <Form.Control
               type="email"
               id="registerEmail"
-              placeholder="worker@example.com"
+              placeholder="worker@transvirex.com"
               size="lg"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -111,17 +237,34 @@ function Register() {
 
           <Form.Group className="mb-4">
             <Form.Label htmlFor="registerPassword" size="lg">
-              Password
+              Temporary Password
             </Form.Label>
-            <Form.Control
-              type="password"
-              id="registerPassword"
-              placeholder="Set a password for the worker"
-              size="lg"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={loading}
-            />
+            <div className="d-flex gap-2">
+              <Form.Control
+                type="text"
+                id="registerPassword"
+                placeholder="Enter or generate a temporary password"
+                size="lg"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
+              />
+              <Button
+                variant="outline-secondary"
+                size="lg"
+                type="button"
+                onClick={handleGenerate}
+                disabled={loading}
+                title="Generate a strong random password"
+                style={{ whiteSpace: "nowrap" }}
+              >
+                <i className="bi bi-stars me-1" />
+                Generate
+              </Button>
+            </div>
+            <Form.Text className="text-muted">
+              The worker will be asked to change this on first login.
+            </Form.Text>
           </Form.Group>
 
           <Form.Group className="mb-4">
