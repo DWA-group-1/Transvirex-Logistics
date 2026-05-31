@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Nav, Offcanvas } from "react-bootstrap";
-import { getCurrentRole, clearAuthToken } from "../services/api";
+import { getCurrentRole, clearAuthToken, logout } from "../services/api";
 
 type Role = "driver" | "dispatcher" | "billing" | "manager";
 
@@ -65,6 +65,7 @@ function Navbar({ isDark, onToggleTheme }: NavbarProps) {
   const handleShow = () => setShowMenu(true);
 
   const handleLogout = () => {
+    logout();
     clearAuthToken();
     navigate("/");
   };

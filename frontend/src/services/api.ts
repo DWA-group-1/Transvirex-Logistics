@@ -92,6 +92,27 @@ export const login = async (
   return data;
 };
 
+//send refresh token to auth/token/revoke with POST verb
+export const logout = async (): Promise<void> => {
+  const token = getRefreshToken();
+  if (!token) return;
+
+  const response = await fetch(`${API_BASE_URL}/auth/token/revoke`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      refresh_token: token,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Logout failed: ${error}`);
+  }
+};
+
 export const register = async (
   email: string,
   password: string,

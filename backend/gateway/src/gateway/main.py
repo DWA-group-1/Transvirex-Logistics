@@ -71,7 +71,7 @@ async def proxy(prefix: str, path: str, request: Request):
     client = request.app.state.http_client
     if full_path not in PUBLIC_PREFIXES:
         token = extract_token(request.headers.get("Authorization"))
-        claims = await verify_jwt(token, client)
+        claims = await verify_jwt(token)
 
     target_url = f"{SERVICES[prefix]}/{path}"
     headers = filter_headers(request.headers)

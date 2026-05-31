@@ -15,6 +15,7 @@ def extract_token(authorization_header: str | None) -> str:
 
 
 def verify_jwt(token: str) -> dict:
+    print("verifying jwt")
     try:
         claims = jwt.decode(
             token,
