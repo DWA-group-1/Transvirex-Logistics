@@ -45,7 +45,7 @@ async def list_drivers(
     )
 
 
-@router.get("/by-ids", response_model=DriverList)
+@router.get("/by-ids", response_model=list[DriverOut])
 async def get_driver_by_ids(
     db: Annotated[AsyncSession, Depends(get_db)],
     _: Annotated[str, Depends(require_role("manager", "dispatcher"))],
