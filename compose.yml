@@ -7,11 +7,12 @@ services:
       GATEWAY_AUTH_URL: http://auth:8000
       GATEWAY_NOTIF_URL: http://notification:8000
       GATEWAY_CATALOG_URL: http://catalog:8000
-      GATEWAY_JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
       GATEWAY_JWT_ALGORITHM: ${JWT_ALGORITHM}
       GATEWAY_CORS_ORIGINS: '["http://localhost:5173","http://localhost:4173"]'
     ports:
       - "8000:8000"
+    volumes:
+      - ./keys:/run/secrets/keys:ro,z
     depends_on:
       auth:
         condition: service_healthy
@@ -54,10 +55,7 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql+psycopg://${AUTH_DB_USER}:${AUTH_DB_PASSWORD}@auth_db:5432/authentication
-      JWT_SECRET: ${JWT_SECRET}
       JWT_ALGORITHM: ${JWT_ALGORITHM}
-      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY}
-      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
     depends_on:
       auth_db:
         condition: service_healthy
@@ -75,6 +73,7 @@ services:
       start_period: 30s
     volumes:
       - ./backend/services/auth/:/app:Z
+      - ./keys:/run/secrets/keys:ro,z
     command:
       [
         "uvicorn",
@@ -109,7 +108,6 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql+psycopg://${NOTIF_DB_USER}:${NOTIF_DB_PASSWORD}@notification_db:5432/notifications
-      JWT_SECRET: ${JWT_SECRET}
       JWT_ALGORITHM: ${JWT_ALGORITHM}
       REDIS_URL: "redis://redis:6379"
     depends_on:
@@ -133,6 +131,7 @@ services:
       start_period: 30s
     volumes:
       - ./backend/services/notification/:/app:Z
+      - ./keys:/run/secrets/keys:ro,z
     command:
       [
         "uvicorn",
@@ -167,8 +166,6 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql+psycopg://${CATALOG_DB_USER}:${CATALOG_DB_PASSWORD}@catalog_db:5432/catalog
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_ALGORITHM: ${JWT_ALGORITHM}
       REDIS_URL: "redis://redis:6379"
       AUTH_INTERNAL_URL: "http://auth:8000"
     depends_on:
