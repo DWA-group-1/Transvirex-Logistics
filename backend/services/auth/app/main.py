@@ -8,7 +8,7 @@ from datetime import datetime,timezone
 
 from .database import get_db
 from .models import User, RefreshToken
-from .schemas import Token, UserCreate, UserOut, TokenPair, RefreshRequest
+from .schemas import Token, UserCreate, UserOut, TokenPair, RefreshRequest, LoginResponse, ChangePasswordRequest
 from .security import (
     create_access_token,
     decode_access_token,
@@ -95,6 +95,7 @@ async def register(
         email=user_data.email,
         hashed_password=hash_password(user_data.password),
         role=user_data.role,
+        must_change_password=user_data.must_change_password
     )
     db.add(new_user)
     await db.commit()
@@ -102,7 +103,7 @@ async def register(
     return new_user
 
 
-@app.post("/token", response_model=TokenPair)
+@app.post("/token", response_model=LoginResponse)
 async def login(
     form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)
 ):
@@ -136,8 +137,54 @@ async def login(
         "access_token": access_token,
         "refresh_token": raw_refresh,
         "token_type": "bearer",
+        "must_change_password": user.must_change_password,
     }
 
+@app.post("/change-password", response_model=dict)
+async def change_password(
+    request: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Change user password. For first-time login, current_password is optional."""
+    
+    # Validate passwords match
+    if request.new_password != request.confirm_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Passwords do not match"
+        )
+    
+    # Validate password strength
+    if len(request.new_password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 8 characters"
+        )
+    
+    # For non-first-time changes, verify current password
+    if not current_user.must_change_password:
+        if not request.current_password:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password is required"
+            )
+        
+        if not verify_password(request.current_password, current_user.hashed_password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Current password is incorrect"
+            )
+    
+    # Update password and clear the must_change_password flag
+    current_user.hashed_password = hash_password(request.new_password)
+    current_user.must_change_password = False
+    await db.commit()
+    
+    return {
+        "message": "Password changed successfully",
+        "must_change_password": False
+    }
 
 @app.get("/me", response_model=UserOut)
 async def get_me(current_user: User = Depends(get_current_user)):

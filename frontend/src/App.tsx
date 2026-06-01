@@ -4,6 +4,7 @@ import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
 import Login from "./pages/login";
 import Register from "./pages/register";
+import ChangePassword from "./pages/ChangePassword";
 import TrackInvoices from "./pages/TrackInvoices";
 import TrackOrders from "./pages/TrackOrders";
 import PlanRoutes from "./pages/PlanRoutes";
@@ -50,7 +51,8 @@ function App() {
           element={<Login isDark={isDark} onToggleTheme={toggleTheme} />}
         />
 
-        {/* Protected — Navbar rendered once via layout */}
+        <Route path="/change-password" element={<ChangePassword />} />
+
         <Route
           element={
             <ProtectedLayout isDark={isDark} onToggleTheme={toggleTheme} />

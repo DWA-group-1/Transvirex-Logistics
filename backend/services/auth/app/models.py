@@ -43,6 +43,10 @@ class User(Base):
         DateTime(timezone=True),
         server_default=func.now(),
     )
+    
+    must_change_password: Mapped[bool] = mapped_column(
+        default=True, nullable=False, server_default="true"
+    )
 
 class RefreshToken(Base):
     __tablename__ = "refresh_tokens"
