@@ -1,0 +1,70 @@
+from datetime import datetime
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+
+class DriverCreate(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8)
+    full_name: str = Field(min_length=1, max_length=200)
+    phone: str | None = None
+
+
+class DriverUpdate(BaseModel):
+    full_name: str | None = Field(default=None, min_length=1, max_length=200)
+    phone: str | None = None
+
+
+class DriverOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    auth_user_id: UUID
+    email: str
+    full_name: str
+    phone: str | None
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class DriverList(BaseModel):
+    items: list[DriverOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class HubCreate(BaseModel):
+    code: str = Field(min_length=1, max_length=20)
+    name: str = Field(min_length=1, max_length=200)
+    address: str = Field(min_length=1)
+    capacity: int | None = Field(default=None, ge=0)
+
+
+class HubUpdate(BaseModel):
+    code: str | None = Field(default=None, min_length=1, max_length=20)
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    address: str | None = Field(default=None, min_length=1)
+    capacity: int | None = Field(default=None, ge=0)
+
+
+class HubOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    code: str
+    name: str
+    address: str
+    capacity: int | None
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class HubList(BaseModel):
+    items: list[HubOut]
+    total: int
+    limit: int
+    offset: int
