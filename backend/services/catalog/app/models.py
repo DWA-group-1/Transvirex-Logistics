@@ -41,3 +41,33 @@ class Driver(Base):
         onupdate=func.now(),
         nullable=False,
     )
+
+
+class Hub(Base):
+    __tablename__ = "hubs"
+
+    id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+    )
+    code: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    address: Mapped[str] = mapped_column(String, nullable=False)
+    capacity: Mapped[int | None] = mapped_column(nullable=True)
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        server_default="true",
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
