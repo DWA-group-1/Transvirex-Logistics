@@ -175,7 +175,7 @@ function Login() {
           background: none;
           border: none;
           cursor: pointer;
-          color: rgba(255, 255, 255, 0.45);
+          color: var(--font-color);  /* changed from rgba(255,255,255,0.45) */
           font-size: 16px;
           display: grid;
           place-items: center;
@@ -185,7 +185,7 @@ function Login() {
         }
 
         .glass-pw-toggle:hover {
-          color: rgba(255, 255, 255, 0.85);
+          color: var(--main-color);  /* changed from rgba(255,255,255,0.85) */
         }
 
         .glass-submit {
