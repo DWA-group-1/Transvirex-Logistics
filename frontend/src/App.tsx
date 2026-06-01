@@ -82,17 +82,15 @@ function App() {
             }
           />
           <Route path="/logistics-hub" element={<LogisticsHub />} />
+          <Route
+            path="/register"
+            element={
+              <ProtectedRoute allowedRoles={["manager"]}>
+                <Register />
+              </ProtectedRoute>
+            }
+          />
         </Route>
-
-        {/* Manager-only */}
-        <Route
-          path="/register"
-          element={
-            <ProtectedRoute allowedRoles={["manager"]}>
-              <Register />
-            </ProtectedRoute>
-          }
-        />
       </Routes>
     </BrowserRouter>
   );
