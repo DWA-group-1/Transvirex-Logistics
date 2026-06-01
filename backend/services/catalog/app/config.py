@@ -6,8 +6,6 @@ class Settings(BaseSettings):
 
     database_url: str
     redis_url: str = "http://redis:6379"
-    jwt_secret: str
-    jwt_algorithm: str
     auth_internal_url: str = "http://auth:8000"
 
 

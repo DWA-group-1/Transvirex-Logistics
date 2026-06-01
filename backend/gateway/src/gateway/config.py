@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,12 +15,11 @@ class Settings(BaseSettings):
     notif_url: str = "http://notification:8000"
     catalog_url: str = "http://catalog:8000"
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:4173"]
-    jwt_public_key: str
     jwt_algorithm: str = "RS256"
 
     @property
     def public_key(self) -> str:
-        return self.jwt_public_key.replace("\\n", "\n")
+        return Path("/run/secrets/keys/public.pem").read_text()
 
 
 settings = Settings()
