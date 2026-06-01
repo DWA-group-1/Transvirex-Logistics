@@ -1,3 +1,4 @@
+from functools import cached_property
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -17,7 +18,7 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:4173"]
     jwt_algorithm: str = "RS256"
 
-    @property
+    @cached_property
     def public_key(self) -> str:
         return Path("/run/secrets/keys/public.pem").read_text()
 

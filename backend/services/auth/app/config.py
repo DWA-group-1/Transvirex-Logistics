@@ -1,3 +1,4 @@
+from functools import cached_property
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -14,11 +15,11 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    @property
+    @cached_property
     def private_key(self) -> str:
         return Path("/run/secrets/keys/private.pem").read_text()
 
-    @property
+    @cached_property
     def public_key(self) -> str:
         return Path("/run/secrets/keys/public.pem").read_text()
 
