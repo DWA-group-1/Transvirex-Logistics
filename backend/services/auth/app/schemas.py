@@ -1,4 +1,5 @@
 from uuid import UUID
+from typing import Optional  # Add this import
 
 from pydantic import BaseModel, EmailStr
 
@@ -8,12 +9,14 @@ from .models import Role
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
+    must_change_password: bool = True
     role: Role
 
 
 class UserOut(BaseModel):
     id: UUID
     email: str
+    must_change_password: bool
     role: Role
 
     class Config:
@@ -35,3 +38,13 @@ class TokenPair(BaseModel):
 
 class RefreshRequest(BaseModel):
     refresh_token: str
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: Optional[str] = None  # Optional for first-time change
+    new_password: str
+    confirm_password: str
+
+
+class LoginResponse(TokenPair):
+    must_change_password: bool 

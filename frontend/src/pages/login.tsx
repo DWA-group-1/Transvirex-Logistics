@@ -23,8 +23,13 @@ function Login() {
     setLoading(true);
 
     try {
-      await login(email, password);
-      navigate("/home");
+      const response = await login(email, password);
+      // Check if user needs to change password
+      if (response.must_change_password) {
+        navigate("/change-password");
+      } else {
+        navigate("/home");
+      }
     } catch (err: any) {
       setError(err.message || "Connection error. Is the backend running?");
     } finally {

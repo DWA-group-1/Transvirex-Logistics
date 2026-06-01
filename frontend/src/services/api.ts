@@ -4,6 +4,7 @@ export interface TokenResponse {
   access_token: string;
   refresh_token: string;
   token_type: string;
+  must_change_password: boolean;  // ADD THIS LINE
 }
 
 export interface UserOut {
@@ -89,7 +90,7 @@ export const login = async (
   if (payload?.role) localStorage.setItem("userRole", payload.role);
   if (payload?.email) localStorage.setItem("userEmail", payload.email);
 
-  return data;
+  return data;  // Now includes must_change_password
 };
 
 //send refresh token to auth/token/revoke with POST verb
@@ -218,7 +219,7 @@ export const refreshAccessToken = async (): Promise<string> => {
     throw new Error("No refresh token found");
   }
 
-  const response = await fetch(`${API_BASE_URL}/token/refresh`, {
+  const response = await fetch(`${API_BASE_URL}/auth/token/refresh`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -242,4 +243,34 @@ export const refreshAccessToken = async (): Promise<string> => {
   }
 
   return data.access_token;
+};
+
+// ADD THIS NEW FUNCTION for changing password
+export const changePassword = async (
+  newPassword: string,
+  confirmPassword: string,
+  currentPassword?: string
+): Promise<{ message: string; must_change_password: boolean }> => {
+  const token = getAuthToken();
+  if (!token) throw new Error("No authentication token found");
+
+  const response = await fetch(`${API_BASE_URL}/auth/change-password`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      current_password: currentPassword || null,
+      new_password: newPassword,
+      confirm_password: confirmPassword,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || "Failed to change password");
+  }
+
+  return response.json();
 };
