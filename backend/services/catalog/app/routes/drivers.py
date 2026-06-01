@@ -14,11 +14,11 @@ from ..models import Driver
 from ..schemas import DriverCreate, DriverList, DriverOut, DriverUpdate
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="drivers", tags=["drivers"])
+router = APIRouter(prefix="/drivers", tags=["drivers"])
 
 
 @router.get("", response_model=DriverList)
-async def list_driver(
+async def list_drivers(
     db: Annotated[AsyncSession, Depends(get_db)],
     _: Annotated[str, Depends(require_role("manager", "dispatcher"))],
     is_active: bool | None = Query(None),
@@ -75,7 +75,7 @@ async def get_driver(
     return driver
 
 
-@router.post("", response_model=DriverCreate, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=DriverOut, status_code=status.HTTP_201_CREATED)
 async def create_driver(
     payload: DriverCreate,
     request: Request,
@@ -104,7 +104,6 @@ async def create_driver(
     driver = Driver(
         auth_user_id=auth_user_id,
         email=payload.email,
-        password=payload.password,
         full_name=payload.full_name,
         phone=payload.phone,
     )
@@ -122,8 +121,7 @@ async def create_driver(
             await auth.delete_user(auth_user_id, jwt=jwt)
         except Exception:
             logger.exception(
-                "Auth rollback failed for auth_user_id=%s. ",
-                "Manual cleanup required.",
+                "Auth rollback failed for auth_user_id=%s. Manual cleanup required.",
                 auth_user_id,
             )
         raise HTTPException(
@@ -180,7 +178,7 @@ async def update_driver(
 
 
 @router.delete("/{driver_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def deactivate_user(
+async def deactivate_driver(
     driver_id: UUID,
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
