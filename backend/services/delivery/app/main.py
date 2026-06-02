@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from . import clients
 from .config import settings
 from .events import EventBus
+from .routes import deliveries as deliveries_router
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
@@ -28,6 +29,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Delivery Service", version="1.0", lifespan=lifespan)
+app.include_router(deliveries_router.router)
 
 
 @app.get("/health")
