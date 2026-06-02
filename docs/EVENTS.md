@@ -209,6 +209,30 @@ Emitted when a delivery is cancelled from any non-terminal state.
 }
 ```
 
+#### `incident.declared`
+
+Emitted when an incident is declared.
+
+```json
+{
+  "incident_id": "uuid",
+  "delivery_id": "uuid",
+  "type": "string",
+  "severity": "low | medium | high"
+}
+```
+
+#### `incident.resolved`
+
+Emitted when an incident is resolved.
+
+```json
+{
+  "incident_id": "uuid",
+  "delivery_id": "uuid"
+}
+```
+
 ---
 
 ## Consumers
