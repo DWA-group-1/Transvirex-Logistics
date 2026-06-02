@@ -155,9 +155,6 @@ async def proxy(prefix: str, path: str, request: Request):
 
 @app.websocket("/{prefix}/{path:path}")
 async def proxy_ws(websocket: WebSocket, prefix: str, path: str):
-    logging.getLogger("gateway.ws").info(
-        "WS handler hit: prefix=%s path=%s", prefix, path
-    )
     if prefix not in SERVICES:
         await websocket.close(code=4404)
         return
