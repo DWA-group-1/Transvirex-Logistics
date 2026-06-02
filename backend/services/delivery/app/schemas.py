@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .models import DeliveryStatus
+from .models import DeliveryStatus, IncidentStatus
 
 
 class DeliveryCreate(BaseModel):
@@ -74,3 +74,27 @@ class TrackingEventOut(BaseModel):
 class TrackingNoteCreate(BaseModel):
     location: str | None = None
     notes: str | None = None
+
+
+class IncidentCreate(BaseModel):
+    type: str = Field(min_length=1)
+    description: str = Field(min_length=1)
+    severity: str = Field(default="medium", pattern="^(low|medium|high)$")
+
+
+class IncidentResolve(BaseModel):
+    resolution: str = Field(min_length=1)
+
+
+class IncidentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    delivery_id: UUID
+    type: str
+    description: str
+    severity: str
+    status: IncidentStatus
+    resolution: str | None
+    created_at: datetime
+    updated_at: datetime
