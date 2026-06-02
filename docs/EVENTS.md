@@ -160,7 +160,8 @@ reassignment).
 ```json
 {
   "delivery_id": "uuid",
-  "driver_id": "uuid"
+  "driver_id": "uuid",
+  "driver_auth_user_id": "uuid | null"
 }
 ```
 
