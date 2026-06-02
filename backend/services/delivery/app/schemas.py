@@ -58,3 +58,19 @@ class DeliveryList(BaseModel):
 
 class AssignDriverRequest(BaseModel):
     driver_id: UUID
+
+
+class TrackingEventOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    delivery_id: UUID
+    status: str
+    location: str | None
+    notes: str | None
+    created_at: datetime
+
+
+class TrackingNoteCreate(BaseModel):
+    location: str | None = None
+    notes: str | None = None
