@@ -7,12 +7,14 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 class DriverCreate(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
-    full_name: str = Field(min_length=1, max_length=200)
+    first_name: str = Field(min_length=1, max_length=100)
+    last_name: str = Field(min_length=1, max_length=100)
     phone: str | None = None
 
 
 class DriverUpdate(BaseModel):
-    full_name: str | None = Field(default=None, min_length=1, max_length=200)
+    first_name: str | None = Field(default=None, min_length=1, max_length=100)
+    last_name: str | None = Field(default=None, min_length=1, max_length=100)
     phone: str | None = None
 
 
@@ -22,7 +24,8 @@ class DriverOut(BaseModel):
     id: UUID
     auth_user_id: UUID
     email: str
-    full_name: str
+    first_name: str
+    last_name: str
     phone: str | None
     is_active: bool
     created_at: datetime
