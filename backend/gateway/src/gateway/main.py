@@ -1,9 +1,20 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
+from urllib.parse import urlencode
 
 import httpx
-from fastapi import FastAPI, HTTPException, Request, Response
+import websockets
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    Request,
+    Response,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.websockets import WebSocketState
 
 from .auth import extract_token, verify_jwt
 from .config import settings
@@ -53,6 +64,38 @@ HOP_BY_HOP = {
 }
 
 PUBLIC_PREFIXES = {"auth/token", "auth/token/refresh", "auth/token/revoke"}
+
+
+def _ws_target_url(prefix: str, path: str, query: str) -> str:
+    base = SERVICES[prefix].replace("http://", "ws://").replace("https://", "wss://")
+    url = f"{base}/{path}"
+    if query:
+        url = f"{url}?{query}"
+    return url
+
+
+async def _pump(client: WebSocket, upstream) -> None:
+    async def client_to_upstream():
+        try:
+            while True:
+                msg = await client.receive_text()
+                await upstream.send(msg)
+        except WebSocketDisconnect:
+            await upstream.close()
+        except Exception:
+            await upstream.close()
+
+    async def upstream_to_client():
+        try:
+            async for msg in upstream:
+                await client.send_text(msg)
+        except Exception:
+            pass
+        finally:
+            if client.client_state != WebSocketState.DISCONNECTED:
+                await client.close()
+
+    await asyncio.gather(client_to_upstream(), upstream_to_client())
 
 
 def filter_headers(headers):
@@ -108,3 +151,27 @@ async def proxy(prefix: str, path: str, request: Request):
         status_code=upstream_response.status_code,
         headers=response_headers,
     )
+
+
+@app.websocket("/{prefix}/{path:path}")
+async def proxy_ws(websocket: WebSocket, prefix: str, path: str):
+    logging.getLogger("gateway.ws").info(
+        "WS handler hit: prefix=%s path=%s", prefix, path
+    )
+    if prefix not in SERVICES:
+        await websocket.close(code=4404)
+        return
+
+    # Accept the client side first
+    await websocket.accept()
+
+    query = websocket.url.query  # forwards ?token=... downstream
+    target = _ws_target_url(prefix, path, query)
+
+    try:
+        async with websockets.connect(target) as upstream:
+            await _pump(websocket, upstream)
+    except Exception as e:
+        logging.getLogger("gateway.ws").warning("ws proxy error to %s: %s", target, e)
+        if websocket.client_state != WebSocketState.DISCONNECTED:
+            await websocket.close(code=1011)

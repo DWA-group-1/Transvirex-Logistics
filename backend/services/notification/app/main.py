@@ -138,7 +138,6 @@ async def mark_as_read(
     user: dict = Depends(current_user_from_headers),
     db: AsyncSession = Depends(get_db),
 ):
-    """Marque les notifications spécifiées comme lues (uniquement les siennes)."""
     user_id: int = user["user_id"]
     role: str = user["role"]
 

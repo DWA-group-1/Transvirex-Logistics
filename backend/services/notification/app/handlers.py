@@ -61,7 +61,7 @@ async def handle_delivery_assigned(enveloppe: dict) -> None:
     async with SessionMaker() as db:
         await _persist_and_fanout(
             db,
-            target_user_id=data["driver_id"],
+            target_user_id=auth_user_id,
             target_role=None,
             type_="new_mission",
             title="New mission assigned",
