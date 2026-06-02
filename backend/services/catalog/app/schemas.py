@@ -71,3 +71,37 @@ class HubList(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class CustomerCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    contact_name: str | None = Field(default=None, max_length=200)
+    email: str | None = None
+    address: str = Field(min_length=1)
+
+
+class CustomerUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    contact_name: str | None = Field(default=None, max_length=200)
+    email: str | None = None
+    address: str | None = Field(default=None, min_length=1)
+
+
+class CustomerOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    name: str
+    contact_name: str | None
+    email: str | None
+    address: str
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class CustomerList(BaseModel):
+    items: list[CustomerOut]
+    total: int
+    limit: int
+    offset: int
