@@ -65,6 +65,19 @@ async def get_driver_by_ids(
     return list(result.scalars())
 
 
+@router.get("/by-auth-user/{auth_user_id}", response_model=DriverOut)
+async def get_driver_by_auth_user(
+    auth_user_id: UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[str, Depends(require_role("manager", "dispatcher", "driver"))],
+):
+    result = await db.execute(select(Driver).where(Driver.auth_user_id == auth_user_id))
+    driver = result.scalar_one_or_none()
+    if driver is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Driver not found")
+    return driver
+
+
 @router.get("/{driver_id}", response_model=DriverOut)
 async def get_driver(
     driver_id: UUID,

@@ -36,6 +36,7 @@ SERVICES = {
     "auth": settings.auth_url,
     "notification": settings.notif_url,
     "catalog": settings.catalog_url,
+    "delivery": settings.delivery_url,
 }
 
 HOP_BY_HOP = {
@@ -84,7 +85,6 @@ async def proxy(prefix: str, path: str, request: Request):
         headers["X-User-Id"] = str(claims.get("sub", ""))
         headers["X-User-Role"] = claims.get("role", "")
         headers["X-User-Email"] = claims.get("email", "")
-
 
     try:
         upstream_response = await client.request(
