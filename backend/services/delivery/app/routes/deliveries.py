@@ -11,6 +11,7 @@ from ..clients import CatalogClient, get_catalog_client
 from ..database import get_db
 from ..deps import get_identity_headers, require_role
 from ..models import Delivery, DeliveryStatus, TrackingEvent
+from ..permissions import ensure_driver_owns
 from ..schemas import (
     AssignDriverRequest,
     DeliveryCreate,
@@ -40,36 +41,6 @@ async def _write_tracking(
             notes=notes,
         )
     )
-
-
-async def _resolve_acting_driver_id(
-    catalog: CatalogClient, headers: dict[str, str], auth_user_id: str
-) -> UUID:
-    try:
-        driver = await catalog.get_driver_by_auth_user(auth_user_id, headers=headers)
-    except httpx.HTTPStatusError as e:
-        if e.response.status_code == status.HTTP_404_NOT_FOUND:
-            raise HTTPException(
-                status.HTTP_403_FORBIDDEN, "No driver record for this user"
-            )
-        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Catalog lookup failed")
-    return UUID(driver["id"])
-
-
-async def _ensure_driver_owns(
-    delivery: Delivery,
-    role: str,
-    auth_user_id: str,
-    catalog: CatalogClient,
-    headers: dict[str, str],
-) -> None:
-    if role == "driver":
-        acting = await _resolve_acting_driver_id(catalog, headers, auth_user_id)
-        if delivery.assigned_driver_id != acting:
-            raise HTTPException(
-                status.HTTP_403_FORBIDDEN,
-                "You can only act on deliveries assigned to you",
-            )
 
 
 async def _get_or_404(db: AsyncSession, delivery_id: UUID) -> Delivery:
@@ -305,7 +276,7 @@ async def _transition(
             status.HTTP_409_CONFLICT,
             f"Cannot move from '{delivery.status.value}' to '{to.value}'",
         )
-    await _ensure_driver_owns(delivery, role, x_user_id, catalog, headers)
+    await ensure_driver_owns(delivery, role, x_user_id, catalog, headers)
 
     delivery.status = to
     await _write_tracking(db, delivery.id, to.value, location=location)
