@@ -40,7 +40,7 @@ class EventBus:
         enveloppe = {
             "event_id": str(uuid.uuid4()),
             "event_type": event_type,
-            "occured_at": datetime.now(timezone.utc).isoformat(),
+            "occurred_at": datetime.now(timezone.utc).isoformat(),
             "producer": self._producer,
             "event_version": 1,
             "data": data,
@@ -130,14 +130,14 @@ class EventBus:
         raw = fields.get("enveloppe")
         if raw is None:
             logger.warning(
-                "malformed entry missing 'envelope' field, skipping",
+                "malformed entry missing 'enveloppe' field, skipping",
                 extra={"stream": stream, "entry_id": entry_id},
             )
             await self._redis.xack(stream, self._group, entry_id)
             return
 
         try:
-            envelope = json.loads(raw)
+            enveloppe = json.loads(raw)
         except json.JSONDecodeError:
             logger.warning(
                 "event handler failed",
@@ -152,14 +152,14 @@ class EventBus:
         all_ok = True
         for handler in self._handlers.get(stream, []):
             try:
-                await handler(envelope)
+                await handler(enveloppe)
             except Exception:
                 logger.exception(
                     "event handler failed",
                     extra={
                         "stream": stream,
                         "entry_id": entry_id,
-                        "event_type": envelope.get("event_type"),
+                        "event_type": enveloppe.get("event_type"),
                     },
                 )
                 all_ok = False

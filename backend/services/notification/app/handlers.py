@@ -49,8 +49,8 @@ async def _persist_and_fanout(
         await manager.broadcast_to_role(target_role, ws_data)
 
 
-async def handle_delivery_assigned(envelope: dict) -> None:
-    data = envelope["data"]
+async def handle_delivery_assigned(enveloppe: dict) -> None:
+    data = enveloppe["data"]
     async with SessionMaker() as db:
         await _persist_and_fanout(
             db,
@@ -63,8 +63,8 @@ async def handle_delivery_assigned(envelope: dict) -> None:
         )
 
 
-async def handle_incident_declared(envelope: dict) -> None:
-    data = envelope["data"]
+async def handle_incident_declared(enveloppe: dict) -> None:
+    data = enveloppe["data"]
     async with SessionMaker() as db:
         await _persist_and_fanout(
             db,
@@ -83,13 +83,13 @@ EVENT_HANDLERS = {
 }
 
 
-async def _dispatch(envelope: dict) -> None:
-    event_type = envelope.get("event_type")
+async def _dispatch(enveloppe: dict) -> None:
+    event_type = enveloppe.get("event_type")
     handler = EVENT_HANDLERS.get(event_type)
     if handler is None:
         logger.info("no handler for event_type=%s, ignoring", event_type)
         return
-    await handler(envelope)
+    await handler(enveloppe)
 
 
 def register_event_handlers(bus: EventBus) -> None:
