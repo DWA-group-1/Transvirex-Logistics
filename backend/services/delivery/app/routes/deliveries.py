@@ -164,6 +164,8 @@ async def create_delivery(
     payload: DeliveryCreate,
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
+    catalog: Annotated[CatalogClient, Depends(get_catalog_client)],
+    headers: Annotated[dict[str, str], Depends(get_identity_headers)],
     _: Annotated[str, Depends(require_role("manager", "dispatcher"))],
     assigned_driver_id: UUID | None = None,
 ):
@@ -211,12 +213,25 @@ async def create_delivery(
         },
     )
     if starts_assigned:
+        auth_user_id = None
+        try:
+            drivers = await catalog.get_drivers_by_ids(
+                {assigned_driver_id}, headers=headers
+            )
+            if drivers:
+                auth_user_id = drivers[0]["auth_user_id"]
+        except httpx.HTTPStatusError:
+            logger.warning(
+                "Could not resolve auth_user_id for driver %s", assigned_driver_id
+            )
+
         await _publish(
             request,
             "delivery.assigned",
             {
                 "delivery_id": str(delivery.id),
                 "driver_id": str(delivery.assigned_driver_id),
+                "driver_auth_user_id": auth_user_id,
             },
         )
 
@@ -229,6 +244,8 @@ async def assign_driver(
     body: AssignDriverRequest,
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
+    catalog: Annotated[CatalogClient, Depends(get_catalog_client)],
+    headers: Annotated[dict[str, str], Depends(get_identity_headers)],
     _: Annotated[str, Depends(require_role("manager", "dispatcher"))],
 ):
     delivery = await _get_or_404(db, delivery_id)
@@ -248,12 +265,21 @@ async def assign_driver(
     await db.commit()
     await db.refresh(delivery)
 
+    auth_user_id = None
+    try:
+        drivers = await catalog.get_drivers_by_ids({body.driver_id}, headers=headers)
+        if drivers:
+            auth_user_id = drivers[0]["auth_user_id"]
+    except httpx.HTTPStatusError:
+        logger.warning("Could not resolve auth_user_id for driver %s", body.driver_id)
+
     await _publish(
         request,
         "delivery.assigned",
         {
             "delivery_id": str(delivery.id),
             "driver_id": str(delivery.assigned_driver_id),
+            "driver_auth_user_id": auth_user_id,
         },
     )
     return delivery

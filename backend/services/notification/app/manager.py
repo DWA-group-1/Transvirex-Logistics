@@ -5,19 +5,19 @@ from fastapi import WebSocket
 
 class ConnectionManager:
     def __init__(self):
-        self.by_user_id: dict[int, set[WebSocket]] = defaultdict(set)
+        self.by_user_id: dict[str, set[WebSocket]] = defaultdict(set)
         self.by_role: dict[str, set[WebSocket]] = defaultdict(set)
 
-    async def connect(self, websocket: WebSocket, user_id: int, role: str):
+    async def connect(self, websocket: WebSocket, user_id: str, role: str):
         await websocket.accept()
         self.by_user_id[user_id].add(websocket)
         self.by_role[role].add(websocket)
 
-    def disconnect(self, websocket: WebSocket, user_id: int, role: str):
+    def disconnect(self, websocket: WebSocket, user_id: str, role: str):
         self.by_user_id[user_id].discard(websocket)
         self.by_role[role].discard(websocket)
 
-    async def send_to_user(self, user_id: int, data: dict):
+    async def send_to_user(self, user_id: str, data: dict):
         dead = set()
         for ws in self.by_user_id.get(user_id, set()):
             try:
@@ -38,6 +38,4 @@ class ConnectionManager:
             self.by_role[role].discard(ws)
 
 
-# Global Instance
 manager = ConnectionManager()
-

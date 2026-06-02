@@ -14,13 +14,13 @@ logger = logging.getLogger(__name__)
 async def _persist_and_fanout(
     db: AsyncSession,
     *,
-    target_user_id: int | None,
+    target_user_id: str | None,
     target_role: str | None,
     type_: str,
     title: str,
     message: str,
     payload: dict | None = None,
-    sender_id: int | None = None,
+    sender_id: str | None = None,
 ) -> None:
     notif = Notification(
         target_user_id=target_user_id,
@@ -51,14 +51,21 @@ async def _persist_and_fanout(
 
 async def handle_delivery_assigned(enveloppe: dict) -> None:
     data = enveloppe["data"]
+    auth_user_id = data.get("driver_auth_user_id")
+    if not auth_user_id:
+        logger.warning(
+            "delivery.assigned missing driver_auth_user_id, skipping fanout: %s",
+            data.get("delivery_id"),
+        )
+        return
     async with SessionMaker() as db:
         await _persist_and_fanout(
             db,
-            target_user_id=data["driver_id"],
+            target_user_id=auth_user_id,
             target_role=None,
             type_="new_mission",
             title="New mission assigned",
-            message=f"Delivery #{data["delivery_id"]} was assigned to you.",
+            message=f"Delivery #{data['delivery_id']} was assigned to you.",
             payload={"delivery_id": data["delivery_id"]},
         )
 

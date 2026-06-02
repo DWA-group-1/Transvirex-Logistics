@@ -50,7 +50,7 @@ def current_user_from_headers(
     x_user_id: str = Header(..., alias="X-User-Id"),
     x_user_role: str = Header(..., alias="X-User-Role"),
 ) -> dict:
-    return {"user_id": int(x_user_id), "role": x_user_role}
+    return {"user_id": x_user_id, "role": x_user_role}
 
 
 # ─── Routes HTTP ───────────────────────────────────────────────────────────
@@ -138,7 +138,6 @@ async def mark_as_read(
     user: dict = Depends(current_user_from_headers),
     db: AsyncSession = Depends(get_db),
 ):
-    """Marque les notifications spécifiées comme lues (uniquement les siennes)."""
     user_id: int = user["user_id"]
     role: str = user["role"]
 
@@ -173,7 +172,7 @@ async def ws_notifications(
         await websocket.close(code=4001)
         return
 
-    user_id: int = int(payload["sub"])
+    user_id: str = payload["sub"]
     role: str = payload["role"]
 
     await manager.connect(websocket, user_id, role)
