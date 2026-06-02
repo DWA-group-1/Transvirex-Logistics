@@ -14,7 +14,7 @@ def require_role(*allowed_roles: str):
     return _check
 
 
-def get_identity_header(
+def get_identity_headers(
     x_user_id: Annotated[str, Header()], x_user_role: Annotated[str, Header()]
 ) -> dict[str, str]:
     return {"X-User-Id": x_user_id, "X-User-Role": x_user_role}

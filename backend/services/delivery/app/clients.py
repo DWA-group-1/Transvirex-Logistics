@@ -42,6 +42,16 @@ class CatalogClient:
     ) -> list[dict]:
         return await self._by_ids("/customers/by-ids", ids, headers)
 
+    async def get_driver_by_auth_user(
+        self, auth_user_id: str, *, headers: dict[str, str]
+    ) -> dict:
+        resp = await self._client.get(
+            f"/drivers/by-auth-user/{auth_user_id}",
+            headers=headers,
+        )
+        resp.raise_for_status()
+        return resp.json()
+
     async def close(self) -> None:
         await self._client.aclose()
 
