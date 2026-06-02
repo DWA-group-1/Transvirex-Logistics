@@ -23,7 +23,8 @@ class Driver(Base):
         index=True,
     )
     email: Mapped[str] = mapped_column(String, nullable=False, index=True)
-    full_name: Mapped[str] = mapped_column(String, nullable=False)
+    first_name: Mapped[str] = mapped_column(String, nullable=False)
+    last_name: Mapped[str] = mapped_column(String, nullable=False, index=True)
     phone: Mapped[str | None] = mapped_column(String, nullable=True)
     is_active: Mapped[bool] = mapped_column(
         Boolean,

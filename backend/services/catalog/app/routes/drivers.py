@@ -32,7 +32,9 @@ async def list_drivers(
         query = query.where(Driver.is_active == is_active)
         count_query = count_query.where(Driver.is_active == is_active)
 
-    query = query.order_by(Driver.full_name).limit(limit).offset(offset)
+    query = (
+        query.order_by(Driver.last_name, Driver.first_name).limit(limit).offset(offset)
+    )
 
     result = await db.execute(query)
     total = (await db.execute(count_query)).scalar_one()
@@ -101,13 +103,14 @@ async def create_driver(
             status.HTTP_502_BAD_GATEWAY, "Failed to create user account"
         )
 
-    driver = Driver(
-        auth_user_id=auth_user_id,
-        email=payload.email,
-        full_name=payload.full_name,
-        phone=payload.phone,
-    )
     try:
+        driver = Driver(
+            auth_user_id=auth_user_id,
+            email=payload.email,
+            first_name=payload.first_name,
+            last_name=payload.last_name,
+            phone=payload.phone,
+        )
         db.add(driver)
         await db.commit()
         await db.refresh(driver)
@@ -136,7 +139,8 @@ async def create_driver(
             "driver_id": str(driver.id),
             "auth_user_id": str(driver.auth_user_id),
             "email": driver.email,
-            "full_name": driver.full_name,
+            "first_name": driver.first_name,
+            "last_name": driver.last_name,
         },
     )
     return driver
