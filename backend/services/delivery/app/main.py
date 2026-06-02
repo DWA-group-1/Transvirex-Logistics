@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from . import clients
 from .config import settings
 from .events import EventBus
 
@@ -16,11 +17,14 @@ async def lifespan(app: FastAPI):
     bus = EventBus(settings.redis_url, producer_name="delivery")
     await bus.start()
     app.state.bus = bus
+    clients.catalog_client = clients.CatalogClient()
 
     try:
         yield
     finally:
         await bus.stop()
+        if clients.catalog_client is not None:
+            await clients.catalog_client.close()
 
 
 app = FastAPI(title="Delivery Service", version="1.0", lifespan=lifespan)
