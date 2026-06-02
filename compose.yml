@@ -33,6 +33,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
   # ─── PostgreSQL - AuthDB ────────────────────────────────────────────────────────────
   auth_db:
     image: postgres:17-alpine
@@ -48,6 +49,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
   # ─── Auth Service ──────────────────────────────────────────────────────────
   auth:
     build: ./backend/services/auth
@@ -202,6 +204,63 @@ services:
         "app",
       ]
 
+  # ─── PostgreSQL - DeliveryDB ─────────────────────────────────────────────────
+  delivery_db:
+    image: postgres:17-alpine
+    container_name: transvirex-delivery-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DELIVERY_DB_USER}
+      POSTGRES_PASSWORD: ${DELIVERY_DB_PASSWORD}
+      POSTGRES_DB: delivery
+    volumes:
+      - delivery_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DELIVERY_DB_USER} -d delivery"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ─── Delivery Service ─────────────────────────────────────────────────
+  delivery:
+    build: ./backend/services/delivery
+    container_name: transvirex-delivery
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://${DELIVERY_DB_USER}:${DELIVERY_DB_PASSWORD}@delivery_db:5432/delivery
+      REDIS_URL: "redis://redis:6379"
+      CATALOG_INTERNAL_URL: "http://catalog:8000"
+    depends_on:
+      delivery_db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      catalog: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health', timeout=2).status == 200 else 1)",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - ./backend/services/delivery/:/app:Z
+    command:
+      [
+        uvicorn,
+        app.main:app,
+        --host,
+        0.0.0.0,
+        --port,
+        "8000",
+        --reload,
+        --reload-dir,
+        app,
+      ]
+
   # ─── Frontend ──────────────────────────────────────────────────────────────
   frontend:
     profiles: ["prod"]
@@ -231,3 +290,4 @@ volumes:
   auth_pgdata:
   notif_pgdata:
   catalog_pgdata:
+  delivery_pgdata:

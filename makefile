@@ -178,7 +178,7 @@ psql-auth:
 psql-notif:
 	$(COMPOSE) exec notification_db sh -c 'psql -U $$POSTGRES_USER -d $$POSTGRES_DB'
 
-migrate: migrate-auth migrate-notif migrate-catalog
+migrate: migrate-auth migrate-notif migrate-catalog migrate-delivery
 
 migrate-auth:
 	$(COMPOSE) exec auth alembic upgrade head
@@ -186,8 +186,8 @@ migrate-auth:
 migrate-notif:
 	$(COMPOSE) exec notification alembic upgrade head
 
-migrate-catalog:
-	$(COMPOSE) exec catalog alembic upgrade head
+migrate-delivery:
+	$(COMPOSE) exec delivery alembic upgrade head
 
 # Generate a new migration. Usage: make migrate-create s=auth m="message"
 migrate-create:
