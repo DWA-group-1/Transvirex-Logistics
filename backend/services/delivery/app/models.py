@@ -88,3 +88,43 @@ class TrackingEvent(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class IncidentStatus(str, enum.Enum):
+    OPEN = "open"
+    RESOLVED = "resolved"
+
+
+class Incident(Base):
+    __tablename__ = "incidents"
+
+    id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    delivery_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), nullable=False, index=True
+    )
+
+    type: Mapped[str] = mapped_column(
+        String, nullable=False
+    )  # damaged, failed_delivery, accident, delay...
+    description: Mapped[str] = mapped_column(String, nullable=False)
+    severity: Mapped[str] = mapped_column(
+        String, nullable=False, server_default="medium"
+    )  # low, medium, high
+    status: Mapped[IncidentStatus] = mapped_column(
+        SAEnum(IncidentStatus, values_callable=lambda e: [x.value for x in e]),
+        nullable=False,
+        server_default=IncidentStatus.OPEN.value,
+    )
+    resolution: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
