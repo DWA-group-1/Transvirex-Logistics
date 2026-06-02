@@ -134,6 +134,80 @@ Emitted when a hub is soft-deleted (`is_active` set to `false`).
 }
 ```
 
+### `delivery.events`
+
+Produced by the **Delivery** service. The Notification service subscribes to this
+stream (see Consumers). `delivery.completed` is the event Billing will subscribe to
+once built.
+
+#### `delivery.created`
+
+Emitted when a delivery is created.
+
+```json
+{
+  "delivery_id": "uuid",
+  "customer_id": "uuid",
+  "hub_id": "uuid"
+}
+```
+
+#### `delivery.assigned`
+
+Emitted when a driver is assigned (at creation or via the assign endpoint, including
+reassignment).
+
+```json
+{
+  "delivery_id": "uuid",
+  "driver_id": "uuid"
+}
+```
+
+#### `delivery.picked_up`
+
+Emitted when the delivery moves ASSIGNED → PICKED_UP.
+
+```json
+{
+  "delivery_id": "uuid",
+  "driver_id": "uuid | null"
+}
+```
+
+#### `delivery.in_transit`
+
+Emitted when the delivery moves PICKED_UP → IN_TRANSIT.
+
+```json
+{
+  "delivery_id": "uuid",
+  "driver_id": "uuid | null"
+}
+```
+
+#### `delivery.completed`
+
+Emitted when the delivery moves IN_TRANSIT → DELIVERED. **Billing subscribes to this**
+to generate invoices.
+
+```json
+{
+  "delivery_id": "uuid",
+  "driver_id": "uuid | null"
+}
+```
+
+#### `delivery.cancelled`
+
+Emitted when a delivery is cancelled from any non-terminal state.
+
+```json
+{
+  "delivery_id": "uuid"
+}
+```
+
 ---
 
 ## Consumers
@@ -163,14 +237,10 @@ at info level).
 These are part of the target architecture and will be added as their producing
 services are built. Listed here so the contract is forward-looking.
 
-| Stream            | Event type           | Producer | Notes                                                   |
-| ----------------- | -------------------- | -------- | ------------------------------------------------------- |
-| `delivery.events` | `delivery.assigned`  | Delivery | A driver is assigned to a delivery.                     |
-| `delivery.events` | `delivery.completed` | Delivery | Triggers invoicing (Billing) and analytics (Reporting). |
-| `delivery.events` | `delivery.cancelled` | Delivery | A delivery is cancelled.                                |
-| `delivery.events` | `incident.declared`  | Delivery | An incident is reported on a delivery.                  |
-| `billing.events`  | `invoice.created`    | Billing  | An invoice is generated for a completed delivery.       |
-| `billing.events`  | `payment.received`   | Billing  | A payment is recorded.                                  |
+| Stream           | Event type         | Producer | Notes                                             |
+| ---------------- | ------------------ | -------- | ------------------------------------------------- |
+| `billing.events` | `invoice.created`  | Billing  | An invoice is generated for a completed delivery. |
+| `billing.events` | `payment.received` | Billing  | A payment is recorded.                            |
 
 ## Adding a new event
 
