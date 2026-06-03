@@ -18,7 +18,6 @@ from ..schemas import (
     DeliveryEnriched,
     DeliveryList,
     DeliveryOut,
-    IncidentWithDelivery,
 )
 
 logger = logging.getLogger(__name__)
@@ -456,30 +455,3 @@ async def cancel(
 
     await _publish(request, "delivery.cancelled", {"delivery_id": str(delivery.id)})
     return delivery
-
-
-@router.get("/incidents", response_model=list[IncidentWithDelivery])
-async def list_all_incidents(
-    db: Annotated[AsyncSession, Depends(get_db)],
-    _: Annotated[str, Depends(require_role("manager", "dispatcher"))],
-    status_filter: IncidentStatus | None = Query(None, alias="status"),
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-):
-    query = select(Incident, Delivery).join(
-        Delivery, Delivery.id == Incident.delivery_id
-    )
-    if status_filter is not None:
-        query = query.where(Incident.status == status_filter)
-    query = query.order_by(Incident.created_at.desc()).limit(limit).offset(offset)
-
-    result = await db.execute(query)
-    rows = result.all()
-
-    out: list[IncidentWithDelivery] = []
-    for incident, delivery in rows:
-        item = IncidentWithDelivery.model_validate(incident)
-        item.delivery_address = delivery.delivery_address
-        item.delivery_city = delivery.city
-        out.append(item)
-    return out

@@ -49,6 +49,12 @@ const allNavItems = [
     path: "/hubs",
     roles: ["manager"],
   },
+  {
+    label: "Incidents",
+    icon: "bi-exclamation-triangle",
+    path: "/incidents",
+    roles: ["manager", "dispatcher"],
+  },
 ];
 
 interface NavbarProps {
