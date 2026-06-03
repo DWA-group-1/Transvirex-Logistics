@@ -62,7 +62,7 @@ function App() {
           <Route
             path="/track-orders"
             element={
-              <ProtectedRoute allowedRoles={["driver", "manager"]}>
+              <ProtectedRoute allowedRoles={["dispatcher", "manager"]}>
                 <TrackOrders />
               </ProtectedRoute>
             }
@@ -78,7 +78,7 @@ function App() {
           <Route
             path="/plan-routes"
             element={
-              <ProtectedRoute allowedRoles={["dispatcher", "manager"]}>
+              <ProtectedRoute allowedRoles={["driver", "manager"]}>
                 <PlanRoutes />
               </ProtectedRoute>
             }

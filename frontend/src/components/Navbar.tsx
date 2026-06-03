@@ -16,13 +16,13 @@ const allNavItems = [
     label: "Track Orders",
     icon: "bi-truck",
     path: "/track-orders",
-    roles: ["driver", "manager"],
+    roles: ["dispatcher", "manager"],
   },
   {
     label: "Plan Routes",
     icon: "bi-map",
     path: "/plan-routes",
-    roles: ["dispatcher", "manager"],
+    roles: ["driver", "manager"],
   },
   {
     label: "Invoices",
