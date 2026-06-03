@@ -20,7 +20,7 @@ router = APIRouter(prefix="/drivers", tags=["drivers"])
 @router.get("", response_model=DriverList)
 async def list_drivers(
     db: Annotated[AsyncSession, Depends(get_db)],
-    _: Annotated[str, Depends(require_role("manager", "dispatcher"))],
+    _: Annotated[str, Depends(require_role("manager", "dispatcher", "driver"))],
     is_active: bool | None = Query(None),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -50,7 +50,7 @@ async def list_drivers(
 @router.get("/by-ids", response_model=list[DriverOut])
 async def get_driver_by_ids(
     db: Annotated[AsyncSession, Depends(get_db)],
-    _: Annotated[str, Depends(require_role("manager", "dispatcher"))],
+    _: Annotated[str, Depends(require_role("manager", "dispatcher", "driver"))],
     ids: Annotated[str, Query(description="Comma-separated UUIDs")],
 ):
     try:

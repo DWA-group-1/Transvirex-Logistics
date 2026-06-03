@@ -46,7 +46,9 @@ async def list_customers(
 @router.get("/by-ids", response_model=list[CustomerOut])
 async def list_customers_by_ids(
     db: Annotated[AsyncSession, Depends(get_db)],
-    _: Annotated[str, Depends(require_role("manager", "dispatcher", "billing"))],
+    _: Annotated[
+        str, Depends(require_role("manager", "dispatcher", "billing", "driver"))
+    ],
     ids: Annotated[str, Query(description="Comma-separated UUIDs")],
 ):
     try:

@@ -1,332 +1,410 @@
-import { useState } from "react";
-import { Container, Button, Card, Badge, Modal, Form } from "react-bootstrap";
+import { useEffect, useState, useCallback } from "react";
+import {
+  getMyDeliveries,
+  pickupDelivery,
+  departDelivery,
+  deliverDelivery,
+  declareIncident,
+  type DeliveryEnriched,
+  type DeliveryStatus,
+} from "../services/api";
 
-// SAMPLE DATA - Replace with API call later
-const sampleAssignments = [
-  {
-    id: "ASS-001",
-    deliveryId: "DLV-2024-101",
-    route: "Downtown Area - Route A",
-    pickupLocation: "Hub Main, 123 Main St",
-    deliveryLocation: "Customer 1, 456 Oak Ave",
-    status: "Pending", // "Pending", "Accepted", "Completed", "Declined"
-    priority: "High",
-    deliveryTime: "10:00 AM - 12:00 PM",
-    items: 5,
-  },
-  {
-    id: "ASS-002",
-    deliveryId: "DLV-2024-102",
-    route: "Downtown Area - Route A",
-    pickupLocation: "Hub Main, 123 Main St",
-    deliveryLocation: "Customer 2, 789 Elm St",
-    status: "Pending",
-    priority: "Medium",
-    deliveryTime: "12:30 PM - 1:30 PM",
-    items: 3,
-  },
-  {
-    id: "ASS-003",
-    deliveryId: "DLV-2024-103",
-    route: "Suburbs - Route B",
-    pickupLocation: "Hub Secondary, 999 Park Blvd",
-    deliveryLocation: "Customer 3, 321 Pine Rd",
-    status: "Pending",
-    priority: "Low",
-    deliveryTime: "2:00 PM - 3:00 PM",
-    items: 2,
-  },
-];
+// next action per status
+type NextAction = { label: string; fn: (id: string) => Promise<any> };
+const NEXT_ACTION: Partial<Record<DeliveryStatus, NextAction>> = {
+  assigned: { label: "Confirm pickup", fn: pickupDelivery },
+  picked_up: { label: "Depart / Start delivery", fn: departDelivery },
+  in_transit: { label: "Mark delivered", fn: deliverDelivery },
+};
 
-// SAMPLE HISTORY - Completed assignments
-const sampleHistory = [
-  {
-    id: "ASS-001-HIST",
-    deliveryId: "DLV-2024-050",
-    route: "Downtown Area - Route A",
-    deliveryLocation: "Customer X, Address X",
-    status: "Completed",
-    completedDate: "2024-05-17",
-  },
-  {
-    id: "ASS-002-HIST",
-    deliveryId: "DLV-2024-051",
-    route: "Suburbs - Route B",
-    deliveryLocation: "Customer Y, Address Y",
-    status: "Completed",
-    completedDate: "2024-05-16",
-  },
-];
+const STATUS_LABEL: Record<DeliveryStatus, string> = {
+  created: "Created",
+  assigned: "Assigned",
+  picked_up: "Picked up",
+  in_transit: "In transit",
+  delivered: "Delivered",
+  cancelled: "Cancelled",
+};
 
-function PlanRoutes() {
-  // STATE - Track selected assignment for details modal
-  const [selectedAssignment, setSelectedAssignment] = useState(null);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
+const TERMINAL: DeliveryStatus[] = ["delivered", "cancelled"];
 
-  // STATE - Track incident/delivery report modal
-  const [showReportModal, setShowReportModal] = useState(false);
-  const [reportType, setReportType] = useState("Delivered"); // "Delivered", "Incident"
-  const [reportMessage, setReportMessage] = useState("");
+export default function PlanRoutes() {
+  const [deliveries, setDeliveries] = useState<DeliveryEnriched[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [acting, setActing] = useState<string | null>(null);
 
-  // HELPER - Get priority badge color
-  const getPriorityBadge = (priority: string) => {
-    switch (priority) {
-      case "High":
-        return <Badge bg="danger">{priority}</Badge>;
-      case "Medium":
-        return <Badge bg="warning">{priority}</Badge>;
-      case "Low":
-        return <Badge bg="info">{priority}</Badge>;
-      default:
-        return <Badge bg="secondary">{priority}</Badge>;
+  // incident modal state
+  const [incidentFor, setIncidentFor] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setError(null);
+    try {
+      const res = await getMyDeliveries();
+      setDeliveries(res.items);
+    } catch (e: any) {
+      setError(e.message || "Failed to load your deliveries");
+    } finally {
+      setLoading(false);
     }
-  };
+  }, []);
 
-  // HELPER - Get status badge color
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "Accepted":
-        return <Badge bg="success">{status}</Badge>;
-      case "Completed":
-        return <Badge bg="success">{status}</Badge>;
-      case "Pending":
-        return <Badge bg="warning">{status}</Badge>;
-      case "Declined":
-        return <Badge bg="danger">{status}</Badge>;
-      default:
-        return <Badge bg="secondary">{status}</Badge>;
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function advance(d: DeliveryEnriched) {
+    const action = NEXT_ACTION[d.status];
+    if (!action) return;
+    setActing(d.id);
+    setError(null);
+    try {
+      await action.fn(d.id);
+      await load();
+    } catch (e: any) {
+      setError(e.message || "Action failed");
+    } finally {
+      setActing(null);
     }
-  };
+  }
 
-  // HANDLER - Accept assignment
-  const handleAccept = (assignment: any) => {
-    alert(`Assignment ${assignment.id} accepted!`);
-    // TODO: Update API to mark assignment as accepted
-  };
+  const active = deliveries.filter((d) => !TERMINAL.includes(d.status));
+  const done = deliveries.filter((d) => TERMINAL.includes(d.status));
 
-  // HANDLER - Decline assignment
-  const handleDecline = (assignment: any) => {
-    alert(`Assignment ${assignment.id} declined!`);
-    // TODO: Update API to mark assignment as declined
-  };
-
-  // HANDLER - Open details modal
-  const handleViewDetails = (assignment: any) => {
-    setSelectedAssignment(assignment);
-    setShowDetailsModal(true);
-  };
-
-  // HANDLER - Submit report (delivery or incident)
-  const handleSubmitReport = () => {
-    alert(`Report submitted: ${reportType} - ${reportMessage}`);
-    setReportMessage("");
-    setReportType("Delivered");
-    setShowReportModal(false);
-    // TODO: Send report to API
-  };
+  if (loading) return <p style={{ padding: 24 }}>Loading your route…</p>;
 
   return (
-    <Container fluid className="p-4">
-      {/* PAGE HEADER */}
-      <div className="mb-4">
-        <h1>My Daily Route & Assignments</h1>
-        <p className="text-muted">
-          View, accept, or decline today's deliveries
-        </p>
-      </div>
+    <div style={{ padding: 24 }}>
+      <h1 style={{ marginBottom: 4 }}>My Route &amp; Assignments</h1>
+      <p style={{ color: "#6b7280", marginTop: 0 }}>
+        Your assigned deliveries — advance each as you complete it
+      </p>
 
-      {/* TODAY'S ASSIGNMENTS SECTION */}
-      <div className="mb-5">
-        <h3 className="mb-3">Pending Assignments</h3>
-
-        {/* ASSIGNMENTS GRID */}
-        <div className="row">
-          {sampleAssignments.map((assignment) => (
-            <div key={assignment.id} className="col-md-6 mb-3">
-              <Card className="h-100">
-                <Card.Body>
-                  {/* HEADER WITH ID AND PRIORITY */}
-                  <div className="d-flex justify-content-between align-items-start mb-2">
-                    <h5>{assignment.deliveryId}</h5>
-                    {getPriorityBadge(assignment.priority)}
-                  </div>
-
-                  {/* ROUTE INFO */}
-                  <p className="text-muted mb-2">
-                    <i className="bi bi-geo-alt me-2"></i>
-                    {assignment.route}
-                  </p>
-
-                  {/* DELIVERY LOCATION */}
-                  <p className="mb-2">
-                    <strong>Deliver to:</strong>
-                    <br />
-                    {assignment.deliveryLocation}
-                  </p>
-
-                  {/* TIME WINDOW */}
-                  <p className="text-muted mb-2">
-                    <i className="bi bi-clock me-2"></i>
-                    {assignment.deliveryTime}
-                  </p>
-
-                  {/* ITEMS COUNT */}
-                  <p className="mb-3">
-                    <badge className="bg-light text-dark">
-                      {assignment.items} item(s)
-                    </badge>
-                  </p>
-
-                  {/* ACTION BUTTONS */}
-                  <div className="d-flex gap-2">
-                    <Button
-                      variant="success"
-                      size="sm"
-                      onClick={() => handleAccept(assignment)}
-                      className="flex-grow-1"
-                    >
-                      Accept
-                    </Button>
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      onClick={() => handleDecline(assignment)}
-                      className="flex-grow-1"
-                    >
-                      Decline
-                    </Button>
-                    <Button
-                      variant="outline-secondary"
-                      size="sm"
-                      onClick={() => handleViewDetails(assignment)}
-                    >
-                      Details
-                    </Button>
-                  </div>
-                </Card.Body>
-              </Card>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* REPORT BUTTON */}
-      <div className="mb-5">
-        <Button
-          variant="outline-primary"
-          onClick={() => setShowReportModal(true)}
+      {error && (
+        <div
+          style={{
+            background: "#fee2e2",
+            color: "#991b1b",
+            padding: "10px 14px",
+            borderRadius: 8,
+            margin: "12px 0",
+          }}
         >
-          <i className="bi bi-exclamation-triangle me-2"></i>
-          Report Delivery / Incident
-        </Button>
+          {error}
+        </div>
+      )}
+
+      <h2>Active ({active.length})</h2>
+      {active.length === 0 && (
+        <p style={{ color: "#6b7280" }}>Nothing assigned right now.</p>
+      )}
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
+          gap: 16,
+        }}
+      >
+        {active.map((d) => {
+          const action = NEXT_ACTION[d.status];
+          return (
+            <div key={d.id} style={cardStyle}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <span style={{ fontFamily: "monospace", fontWeight: 600 }}>
+                  {d.id.slice(0, 8)}
+                </span>
+                <span style={badge(d.status)}>{STATUS_LABEL[d.status]}</span>
+              </div>
+
+              <div style={{ margin: "12px 0", fontSize: 14, lineHeight: 1.6 }}>
+                <div>
+                  <strong>To:</strong> {d.customer?.name ?? "—"}
+                </div>
+                <div>
+                  <strong>Deliver:</strong> {d.delivery_address}, {d.city}{" "}
+                  {d.zip_code}
+                </div>
+                <div>
+                  <strong>From hub:</strong> {d.hub?.name ?? "—"}
+                </div>
+                <div>
+                  <strong>Parcels:</strong> {d.parcel_count}
+                  {d.weight_kg ? ` · ${d.weight_kg} kg` : ""}
+                </div>
+                {d.priority && d.priority !== "Normal" && (
+                  <div>
+                    <strong>Priority:</strong> {d.priority}
+                  </div>
+                )}
+                {d.notes && (
+                  <div style={{ color: "#6b7280" }}>Note: {d.notes}</div>
+                )}
+              </div>
+
+              <div style={{ display: "flex", gap: 8 }}>
+                {action && (
+                  <button
+                    onClick={() => advance(d)}
+                    disabled={acting === d.id}
+                    style={primaryBtn}
+                  >
+                    {acting === d.id ? "…" : action.label}
+                  </button>
+                )}
+                <button
+                  onClick={() => setIncidentFor(d.id)}
+                  style={secondaryBtn}
+                >
+                  Report incident
+                </button>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      {/* ASSIGNMENT HISTORY SECTION */}
-      <div className="mb-5">
-        <h3 className="mb-3">Completed Assignments</h3>
-
-        {/* HISTORY TABLE */}
-        <div className="table-responsive">
-          <table className="table table-sm table-striped">
-            <thead className="table-light">
-              <tr>
-                <th>Delivery ID</th>
-                <th>Route</th>
-                <th>Location</th>
-                <th>Date Completed</th>
-                <th>Status</th>
+      {done.length > 0 && (
+        <>
+          <h2 style={{ marginTop: 32 }}>Completed ({done.length})</h2>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr
+                style={{
+                  background: "#1f2937",
+                  color: "white",
+                  textAlign: "left",
+                }}
+              >
+                <th style={th}>Delivery</th>
+                <th style={th}>Customer</th>
+                <th style={th}>Address</th>
+                <th style={th}>Status</th>
               </tr>
             </thead>
             <tbody>
-              {sampleHistory.map((hist) => (
-                <tr key={hist.id}>
-                  <td className="fw-bold">{hist.deliveryId}</td>
-                  <td>{hist.route}</td>
-                  <td>{hist.deliveryLocation}</td>
-                  <td>{hist.completedDate}</td>
-                  <td>{getStatusBadge(hist.status)}</td>
+              {done.map((d) => (
+                <tr key={d.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
+                  <td style={td}>
+                    <span style={{ fontFamily: "monospace" }}>
+                      {d.id.slice(0, 8)}
+                    </span>
+                  </td>
+                  <td style={td}>{d.customer?.name ?? "—"}</td>
+                  <td style={td}>{d.delivery_address}</td>
+                  <td style={td}>{STATUS_LABEL[d.status]}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-      </div>
+        </>
+      )}
 
-      {/* DETAILS MODAL */}
-      <Modal show={showDetailsModal} onHide={() => setShowDetailsModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Assignment Details</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {selectedAssignment && (
-            <>
-              <p>
-                <strong>Delivery ID:</strong> {selectedAssignment.deliveryId}
-              </p>
-              <p>
-                <strong>Route:</strong> {selectedAssignment.route}
-              </p>
-              <p>
-                <strong>Pickup:</strong> {selectedAssignment.pickupLocation}
-              </p>
-              <p>
-                <strong>Delivery Location:</strong>{" "}
-                {selectedAssignment.deliveryLocation}
-              </p>
-              <p>
-                <strong>Time Window:</strong> {selectedAssignment.deliveryTime}
-              </p>
-              <p>
-                <strong>Items:</strong> {selectedAssignment.items}
-              </p>
-              <p>
-                <strong>Priority:</strong>{" "}
-                {getPriorityBadge(selectedAssignment.priority)}
-              </p>
-            </>
-          )}
-        </Modal.Body>
-      </Modal>
-
-      {/* REPORT MODAL */}
-      <Modal show={showReportModal} onHide={() => setShowReportModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Report Delivery or Incident</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form.Group className="mb-3">
-            <Form.Label>Report Type</Form.Label>
-            <Form.Select
-              value={reportType}
-              onChange={(e) => setReportType(e.target.value)}
-            >
-              <option>Delivered</option>
-              <option>Incident</option>
-            </Form.Select>
-          </Form.Group>
-
-          <Form.Group>
-            <Form.Label>Details</Form.Label>
-            <Form.Control
-              as="textarea"
-              rows={3}
-              placeholder="Describe the delivery or incident..."
-              value={reportMessage}
-              onChange={(e) => setReportMessage(e.target.value)}
-            />
-          </Form.Group>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowReportModal(false)}>
-            Close
-          </Button>
-          <Button variant="primary" onClick={handleSubmitReport}>
-            Submit Report
-          </Button>
-        </Modal.Footer>
-      </Modal>
-    </Container>
+      {incidentFor && (
+        <IncidentModal
+          deliveryId={incidentFor}
+          onClose={() => setIncidentFor(null)}
+          onDone={() => {
+            setIncidentFor(null);
+            load();
+          }}
+        />
+      )}
+    </div>
   );
 }
 
-export default PlanRoutes;
+// ── Incident modal (uses the same pattern as FormModal; inline here for completeness) ──
+function IncidentModal({
+  deliveryId,
+  onClose,
+  onDone,
+}: {
+  deliveryId: string;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [type, setType] = useState("damaged");
+  const [description, setDescription] = useState("");
+  const [severity, setSeverity] = useState("medium");
+  const [submitting, setSubmitting] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function submit() {
+    if (!description.trim()) {
+      setErr("Describe the incident.");
+      return;
+    }
+    setSubmitting(true);
+    setErr(null);
+    try {
+      await declareIncident(deliveryId, {
+        type,
+        description: description.trim(),
+        severity,
+      });
+      onDone();
+    } catch (e: any) {
+      setErr(e.message || "Failed to report incident");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div style={overlay} onClick={onClose}>
+      <div style={modalBox} onClick={(e) => e.stopPropagation()}>
+        <h2 style={{ marginTop: 0 }}>Report incident</h2>
+        {err && (
+          <div
+            style={{
+              background: "#fee2e2",
+              color: "#991b1b",
+              padding: 10,
+              borderRadius: 8,
+              marginBottom: 12,
+            }}
+          >
+            {err}
+          </div>
+        )}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <label style={lbl}>
+            Type
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+              style={inp}
+            >
+              <option value="damaged">Damaged parcel</option>
+              <option value="failed_delivery">Failed delivery</option>
+              <option value="accident">Accident</option>
+              <option value="delay">Delay</option>
+            </select>
+          </label>
+          <label style={lbl}>
+            Severity
+            <select
+              value={severity}
+              onChange={(e) => setSeverity(e.target.value)}
+              style={inp}
+            >
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+          </label>
+          <label style={lbl}>
+            Description
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              style={{ ...inp, minHeight: 70 }}
+              placeholder="What happened?"
+            />
+          </label>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: 10,
+            marginTop: 18,
+          }}
+        >
+          <button onClick={onClose} disabled={submitting} style={secondaryBtn}>
+            Cancel
+          </button>
+          <button onClick={submit} disabled={submitting} style={primaryBtn}>
+            {submitting ? "Reporting…" : "Submit report"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// styles
+const cardStyle: React.CSSProperties = {
+  border: "1px solid #e5e7eb",
+  borderRadius: 12,
+  padding: 16,
+  background: "white",
+};
+const primaryBtn: React.CSSProperties = {
+  background: "#16a34a",
+  color: "white",
+  border: "none",
+  borderRadius: 6,
+  padding: "9px 14px",
+  fontWeight: 600,
+  cursor: "pointer",
+};
+const secondaryBtn: React.CSSProperties = {
+  background: "#e5e7eb",
+  color: "#374151",
+  border: "none",
+  borderRadius: 6,
+  padding: "9px 14px",
+  fontWeight: 600,
+  cursor: "pointer",
+};
+const th: React.CSSProperties = { padding: "10px 12px", fontSize: 13 };
+const td: React.CSSProperties = { padding: "10px 12px" };
+const overlay: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(0,0,0,0.4)",
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "center",
+  paddingTop: 80,
+  zIndex: 2000,
+};
+const modalBox: React.CSSProperties = {
+  background: "white",
+  borderRadius: 12,
+  width: 440,
+  maxWidth: "92vw",
+  padding: 24,
+};
+const lbl: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 4,
+  fontSize: 13,
+  fontWeight: 600,
+};
+const inp: React.CSSProperties = {
+  padding: "8px 10px",
+  border: "1px solid #d1d5db",
+  borderRadius: 6,
+  fontSize: 14,
+  fontWeight: 400,
+};
+
+function badge(status: DeliveryStatus): React.CSSProperties {
+  const map: Record<DeliveryStatus, [string, string]> = {
+    created: ["#e5e7eb", "#374151"],
+    assigned: ["#dbeafe", "#1e40af"],
+    picked_up: ["#fef3c7", "#92400e"],
+    in_transit: ["#cffafe", "#155e75"],
+    delivered: ["#d1fae5", "#065f46"],
+    cancelled: ["#fee2e2", "#991b1b"],
+  };
+  const [bg, color] = map[status];
+  return {
+    background: bg,
+    color,
+    padding: "2px 10px",
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 600,
+  };
+}
