@@ -390,6 +390,25 @@ export const deliverDelivery = (id: string) =>
 export const cancelDelivery = (id: string) =>
   apiCall(`/delivery/deliveries/${id}/cancel`, "POST");
 
+export const getMyDeliveries = async (params?: {
+  status?: DeliveryStatus;
+}): Promise<DeliveryList> => {
+  const q = new URLSearchParams();
+  if (params?.status) q.set("status", params.status);
+  const qs = q.toString();
+  return apiCall(`/delivery/deliveries/mine${qs ? `?${qs}` : ""}`);
+};
+
+export const addTrackingNote = (
+  deliveryId: string,
+  body: { location?: string; notes?: string },
+) => apiCall(`/delivery/deliveries/${deliveryId}/tracking`, "POST", body);
+
+export const declareIncident = (
+  deliveryId: string,
+  body: { type: string; description: string; severity?: string },
+) => apiCall(`/delivery/deliveries/${deliveryId}/incidents`, "POST", body);
+
 export const getDrivers = async (): Promise<{ items: DriverRef[] }> =>
   apiCall("/catalog/drivers?is_active=true&limit=100");
 

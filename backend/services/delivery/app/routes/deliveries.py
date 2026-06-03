@@ -11,7 +11,7 @@ from ..clients import CatalogClient, get_catalog_client
 from ..database import get_db
 from ..deps import get_identity_headers, require_role
 from ..models import Delivery, DeliveryStatus, TrackingEvent
-from ..permissions import ensure_driver_owns
+from ..permissions import ensure_driver_owns, resolve_acting_driver_id
 from ..schemas import (
     AssignDriverRequest,
     DeliveryCreate,
@@ -101,6 +101,42 @@ async def list_deliveries(
 ):
     query = select(Delivery)
     count_query = select(func.count()).select_from(Delivery)
+    if status_filter is not None:
+        query = query.where(Delivery.status == status_filter)
+        count_query = count_query.where(Delivery.status == status_filter)
+
+    query = query.order_by(Delivery.created_at.desc()).limit(limit).offset(offset)
+    rows = list((await db.execute(query)).scalars())
+    total = (await db.execute(count_query)).scalar_one()
+
+    return DeliveryList(
+        items=await _enrich(rows, catalog, headers),
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get("/mine", response_model=DeliveryList)
+async def list_my_deliveries(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    catalog: Annotated[CatalogClient, Depends(get_catalog_client)],
+    headers: Annotated[dict[str, str], Depends(get_identity_headers)],
+    role: Annotated[str, Depends(require_role("driver", "manager", "dispatcher"))],
+    x_user_id: Annotated[str, Header()],
+    status_filter: DeliveryStatus | None = Query(None, alias="status"),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
+    # Resolve which driver is asking
+    driver_id = await resolve_acting_driver_id(catalog, headers, x_user_id)
+
+    query = select(Delivery).where(Delivery.assigned_driver_id == driver_id)
+    count_query = (
+        select(func.count())
+        .select_from(Delivery)
+        .where(Delivery.assigned_driver_id == driver_id)
+    )
     if status_filter is not None:
         query = query.where(Delivery.status == status_filter)
         count_query = count_query.where(Delivery.status == status_filter)
