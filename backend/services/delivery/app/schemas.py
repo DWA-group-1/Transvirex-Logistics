@@ -47,6 +47,7 @@ class DeliveryEnriched(DeliveryOut):
     driver: dict | None = None
     hub: dict | None = None
     customer: dict | None = None
+    has_open_incident: bool = False
 
 
 class DeliveryList(BaseModel):
@@ -98,3 +99,19 @@ class IncidentOut(BaseModel):
     resolution: str | None
     created_at: datetime
     updated_at: datetime
+
+
+class IncidentWithDelivery(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    delivery_id: UUID
+    type: str
+    description: str
+    severity: str
+    status: IncidentStatus
+    resolution: str | None
+    created_at: datetime
+    updated_at: datetime
+    delivery_address: str | None = None
+    delivery_city: str | None = None
