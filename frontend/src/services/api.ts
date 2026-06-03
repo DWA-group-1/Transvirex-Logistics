@@ -464,3 +464,17 @@ export const getIncidents = async (params?: {
 
 export const resolveIncident = (incidentId: string, resolution: string) =>
   apiCall(`/delivery/incidents/${incidentId}/resolve`, "POST", { resolution });
+
+export const registerWorker = async (payload: {
+  email: string;
+  password: string;
+  role: "dispatcher" | "billing" | "manager";
+}): Promise<UserOut> => apiCall("/auth/register", "POST", payload);
+
+export const createDriver = async (payload: {
+  email: string;
+  password: string;
+  first_name: string;
+  last_name: string;
+  phone?: string | null;
+}): Promise<DriverRef> => apiCall("/catalog/drivers", "POST", payload);
