@@ -4,13 +4,109 @@ export interface TokenResponse {
   access_token: string;
   refresh_token: string;
   token_type: string;
-  must_change_password: boolean;  // ADD THIS LINE
+  must_change_password: boolean;
 }
 
 export interface UserOut {
-  id: number;
+  id: string;
   email: string;
   role: "driver" | "dispatcher" | "billing" | "manager";
+}
+
+export interface DriverRef {
+  id: string;
+  auth_user_id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone: string | null;
+  is_active: boolean;
+}
+
+export interface HubRef {
+  id: string;
+  code: string;
+  name: string;
+  address: string;
+  capacity: number | null;
+  is_active: boolean;
+}
+
+export interface CustomerRef {
+  id: string;
+  name: string;
+  contact_name: string | null;
+  email: string | null;
+  address: string;
+  is_active: boolean;
+}
+
+export type DeliveryStatus =
+  | "created"
+  | "assigned"
+  | "picked_up"
+  | "in_transit"
+  | "delivered"
+  | "cancelled";
+
+export interface DeliveryEnriched {
+  id: string;
+  hub_id: string;
+  customer_id: string;
+  assigned_driver_id: string | null;
+  pickup_address: string;
+  delivery_address: string;
+  city: string;
+  zip_code: string;
+  parcel_count: number;
+  weight_kg: number | null;
+  service_type: string;
+  priority: string;
+  status: DeliveryStatus;
+  expected_date: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  driver: DriverRef | null;
+  hub: HubRef | null;
+  customer: CustomerRef | null;
+  has_open_incident: boolean;
+}
+
+export interface DeliveryList {
+  items: DeliveryEnriched[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface DeliveryCreatePayload {
+  hub_id: string;
+  customer_id: string;
+  pickup_address: string;
+  delivery_address: string;
+  city: string;
+  zip_code: string;
+  parcel_count?: number;
+  weight_kg?: number | null;
+  service_type: string;
+  priority?: string;
+  expected_date?: string | null;
+  notes?: string | null;
+}
+
+export interface IncidentWithDelivery {
+  id: string;
+  delivery_id: string;
+  type: string;
+  description: string;
+  severity: "low" | "medium" | "high";
+  status: "open" | "resolved";
+  resolution: string | null;
+  created_at: string;
+  updated_at: string;
+  delivery_address: string | null;
+  delivery_city: string | null;
 }
 
 export const getAuthToken = (): string | null =>
@@ -64,7 +160,7 @@ export const isAuthenticated = (): boolean => {
 
 export const login = async (
   email: string,
-  password: string
+  password: string,
 ): Promise<TokenResponse> => {
   const formData = new FormData();
   formData.append("username", email);
@@ -90,10 +186,9 @@ export const login = async (
   if (payload?.role) localStorage.setItem("userRole", payload.role);
   if (payload?.email) localStorage.setItem("userEmail", payload.email);
 
-  return data;  // Now includes must_change_password
+  return data;
 };
 
-//send refresh token to auth/token/revoke with POST verb
 export const logout = async (): Promise<void> => {
   const token = getRefreshToken();
   if (!token) return;
@@ -117,10 +212,11 @@ export const logout = async (): Promise<void> => {
 export const register = async (
   email: string,
   password: string,
-  role: UserOut["role"]
+  role: UserOut["role"],
 ): Promise<UserOut> => {
   const token = getAuthToken();
-  if (!token) throw new Error("You must be logged in as a manager to create accounts.");
+  if (!token)
+    throw new Error("You must be logged in as a manager to create accounts.");
 
   const response = await fetch(`${API_BASE_URL}/auth/register`, {
     method: "POST",
@@ -164,7 +260,7 @@ export const apiCall = async (
   endpoint: string,
   method = "GET",
   body?: unknown,
-  retry = true
+  retry = true,
 ): Promise<any> => {
   const token = getAuthToken();
 
@@ -245,11 +341,10 @@ export const refreshAccessToken = async (): Promise<string> => {
   return data.access_token;
 };
 
-// ADD THIS NEW FUNCTION for changing password
 export const changePassword = async (
   newPassword: string,
   confirmPassword: string,
-  currentPassword?: string
+  currentPassword?: string,
 ): Promise<{ message: string; must_change_password: boolean }> => {
   const token = getAuthToken();
   if (!token) throw new Error("No authentication token found");
@@ -274,3 +369,112 @@ export const changePassword = async (
 
   return response.json();
 };
+
+export const getDeliveries = async (params?: {
+  status?: DeliveryStatus;
+  limit?: number;
+  offset?: number;
+}): Promise<DeliveryList> => {
+  const q = new URLSearchParams();
+  if (params?.status) q.set("status", params.status);
+  if (params?.limit != null) q.set("limit", String(params.limit));
+  if (params?.offset != null) q.set("offset", String(params.offset));
+  const qs = q.toString();
+  return apiCall(`/delivery/deliveries${qs ? `?${qs}` : ""}`);
+};
+
+export const createDelivery = async (
+  payload: DeliveryCreatePayload,
+): Promise<DeliveryEnriched> =>
+  apiCall("/delivery/deliveries", "POST", payload);
+
+export const assignDriver = async (
+  deliveryId: string,
+  driverId: string,
+): Promise<DeliveryEnriched> =>
+  apiCall(`/delivery/deliveries/${deliveryId}/assign`, "POST", {
+    driver_id: driverId,
+  });
+
+export const pickupDelivery = (id: string) =>
+  apiCall(`/delivery/deliveries/${id}/pickup`, "POST");
+export const departDelivery = (id: string) =>
+  apiCall(`/delivery/deliveries/${id}/depart`, "POST");
+export const deliverDelivery = (id: string) =>
+  apiCall(`/delivery/deliveries/${id}/deliver`, "POST");
+export const cancelDelivery = (id: string) =>
+  apiCall(`/delivery/deliveries/${id}/cancel`, "POST");
+
+export const getMyDeliveries = async (params?: {
+  status?: DeliveryStatus;
+}): Promise<DeliveryList> => {
+  const q = new URLSearchParams();
+  if (params?.status) q.set("status", params.status);
+  const qs = q.toString();
+  return apiCall(`/delivery/deliveries/mine${qs ? `?${qs}` : ""}`);
+};
+
+export const addTrackingNote = (
+  deliveryId: string,
+  body: { location?: string; notes?: string },
+) => apiCall(`/delivery/deliveries/${deliveryId}/tracking`, "POST", body);
+
+export const declareIncident = (
+  deliveryId: string,
+  body: { type: string; description: string; severity?: string },
+) => apiCall(`/delivery/deliveries/${deliveryId}/incidents`, "POST", body);
+
+export const getDrivers = async (): Promise<{ items: DriverRef[] }> =>
+  apiCall("/catalog/drivers?is_active=true&limit=100");
+
+export const getHubs = async (): Promise<{ items: HubRef[] }> =>
+  apiCall("/catalog/hubs?is_active=true&limit=100");
+
+export const getCustomers = async (): Promise<{ items: CustomerRef[] }> =>
+  apiCall("/catalog/customers?is_active=true&limit=100");
+
+export const createCustomer = async (payload: {
+  name: string;
+  contact_name?: string | null;
+  email?: string | null;
+  address: string;
+}): Promise<CustomerRef> => apiCall("/catalog/customers", "POST", payload);
+
+export const createHub = async (payload: {
+  code: string;
+  name: string;
+  address: string;
+  capacity?: number | null;
+}): Promise<HubRef> => apiCall("/catalog/hubs", "POST", payload);
+
+export const deactivateCustomer = (id: string) =>
+  apiCall(`/catalog/customers/${id}`, "DELETE");
+
+export const deactivateHub = (id: string) =>
+  apiCall(`/catalog/hubs/${id}`, "DELETE");
+
+export const getIncidents = async (params?: {
+  status?: "open" | "resolved";
+}): Promise<IncidentWithDelivery[]> => {
+  const q = new URLSearchParams();
+  if (params?.status) q.set("status", params.status);
+  const qs = q.toString();
+  return apiCall(`/delivery/incidents${qs ? `?${qs}` : ""}`);
+};
+
+export const resolveIncident = (incidentId: string, resolution: string) =>
+  apiCall(`/delivery/incidents/${incidentId}/resolve`, "POST", { resolution });
+
+export const registerWorker = async (payload: {
+  email: string;
+  password: string;
+  role: "dispatcher" | "billing" | "manager";
+}): Promise<UserOut> => apiCall("/auth/register", "POST", payload);
+
+export const createDriver = async (payload: {
+  email: string;
+  password: string;
+  first_name: string;
+  last_name: string;
+  phone?: string | null;
+}): Promise<DriverRef> => apiCall("/catalog/drivers", "POST", payload);

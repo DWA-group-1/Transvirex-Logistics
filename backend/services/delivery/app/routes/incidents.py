@@ -2,14 +2,14 @@ import logging
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
 from ..deps import require_role
 from ..models import Delivery, Incident, IncidentStatus
-from ..schemas import IncidentCreate, IncidentOut, IncidentResolve
+from ..schemas import IncidentCreate, IncidentOut, IncidentResolve, IncidentWithDelivery
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["incidents"])
@@ -83,6 +83,33 @@ async def get_incident(
     if incident is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Incident not found")
     return incident
+
+
+@router.get("/incidents", response_model=list[IncidentWithDelivery])
+async def list_all_incidents(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[str, Depends(require_role("manager", "dispatcher"))],
+    status_filter: IncidentStatus | None = Query(None, alias="status"),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
+    query = select(Incident, Delivery).join(
+        Delivery, Delivery.id == Incident.delivery_id
+    )
+    if status_filter is not None:
+        query = query.where(Incident.status == status_filter)
+    query = query.order_by(Incident.created_at.desc()).limit(limit).offset(offset)
+
+    result = await db.execute(query)
+    rows = result.all()
+
+    out: list[IncidentWithDelivery] = []
+    for incident, delivery in rows:
+        item = IncidentWithDelivery.model_validate(incident)
+        item.delivery_address = delivery.delivery_address
+        item.delivery_city = delivery.city
+        out.append(item)
+    return out
 
 
 @router.post("/incidents/{incident_id}/resolve", response_model=IncidentOut)

@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Container, Form, Alert } from "react-bootstrap";
-import { register, getCurrentRole } from "../services/api";
+import { registerWorker, createDriver, getCurrentRole } from "../services/api";
 
 type Role = "driver" | "dispatcher" | "billing" | "manager";
 
@@ -19,21 +19,16 @@ function generatePassword(): string {
   const digits = "0123456789";
   const symbols = "!@#$%^&*()-_=+";
   const all = upper + lower + digits + symbols;
-
-  // Guarantee at least one of each required character type
   const required = [
     upper[Math.floor(Math.random() * upper.length)],
     lower[Math.floor(Math.random() * lower.length)],
     digits[Math.floor(Math.random() * digits.length)],
     symbols[Math.floor(Math.random() * symbols.length)],
   ];
-
   const rest = Array.from(
     { length: 8 },
     () => all[Math.floor(Math.random() * all.length)],
   );
-
-  // Shuffle so the required chars aren't always at the start
   return [...required, ...rest].sort(() => Math.random() - 0.5).join("");
 }
 
@@ -71,14 +66,12 @@ function CredentialsScreen({
         <h4 className="mb-4 fw-bold">Account Created</h4>
 
         <div className="border border-dark p-4 rounded-4">
-          {/* One-time warning */}
           <Alert variant="warning" className="mb-4">
             <i className="bi bi-exclamation-triangle-fill me-2" />
             These credentials are shown <strong>one time only</strong>. Copy
             them before leaving this screen.
           </Alert>
 
-          {/* Credentials display */}
           <div
             className="rounded-3 p-3 mb-4 font-monospace"
             style={{
@@ -137,12 +130,17 @@ function CredentialsScreen({
 
 function Register() {
   const navigate = useNavigate();
+  const [role, setRole] = useState<Role>("driver");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<Role>("driver");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [created, setCreated] = useState<CreatedCredentials | null>(null);
+
+  const isDriver = role === "driver";
 
   const currentRole = getCurrentRole();
   if (currentRole !== "manager") {
@@ -164,16 +162,18 @@ function Register() {
     );
   }
 
-  // Show credentials screen after successful creation
   if (created) {
     return (
       <CredentialsScreen
         credentials={created}
         onAddAnother={() => {
           setCreated(null);
+          setRole("driver");
           setEmail("");
           setPassword("");
-          setRole("driver");
+          setFirstName("");
+          setLastName("");
+          setPhone("");
           setError(null);
         }}
       />
@@ -187,14 +187,36 @@ function Register() {
     setError(null);
 
     if (!email.trim() || !password.trim()) {
-      setError("Please fill in all fields.");
+      setError("Please fill in all required fields.");
+      return;
+    }
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+    if (isDriver && (!firstName.trim() || !lastName.trim())) {
+      setError("First and last name are required for drivers.");
       return;
     }
 
     setLoading(true);
     try {
-      await register(email, password, role);
-      setCreated({ email, password, role });
+      if (isDriver) {
+        await createDriver({
+          email: email.trim(),
+          password,
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          phone: phone.trim() || null,
+        });
+      } else {
+        await registerWorker({
+          email: email.trim(),
+          password,
+          role: role as "dispatcher" | "billing" | "manager",
+        });
+      }
+      setCreated({ email: email.trim(), password, role });
     } catch (err: any) {
       setError(err.message || "Registration failed.");
     } finally {
@@ -221,9 +243,24 @@ function Register() {
           )}
 
           <Form.Group className="mb-4">
-            <Form.Label htmlFor="registerEmail" size="lg">
-              Email
-            </Form.Label>
+            <Form.Label htmlFor="registerRole">Role</Form.Label>
+            <Form.Select
+              id="registerRole"
+              size="lg"
+              value={role}
+              onChange={(e) => setRole(e.target.value as Role)}
+              disabled={loading}
+            >
+              {ROLE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+
+          <Form.Group className="mb-4">
+            <Form.Label htmlFor="registerEmail">Email</Form.Label>
             <Form.Control
               type="email"
               id="registerEmail"
@@ -235,8 +272,54 @@ function Register() {
             />
           </Form.Group>
 
+          {/* Driver-only fields */}
+          {isDriver && (
+            <>
+              <div className="d-flex gap-3 mb-4">
+                <Form.Group className="flex-fill">
+                  <Form.Label htmlFor="registerFirstName">
+                    First name
+                  </Form.Label>
+                  <Form.Control
+                    id="registerFirstName"
+                    placeholder="Marie"
+                    size="lg"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    disabled={loading}
+                  />
+                </Form.Group>
+                <Form.Group className="flex-fill">
+                  <Form.Label htmlFor="registerLastName">Last name</Form.Label>
+                  <Form.Control
+                    id="registerLastName"
+                    placeholder="Dupont"
+                    size="lg"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    disabled={loading}
+                  />
+                </Form.Group>
+              </div>
+
+              <Form.Group className="mb-4">
+                <Form.Label htmlFor="registerPhone">
+                  Phone (optional)
+                </Form.Label>
+                <Form.Control
+                  id="registerPhone"
+                  placeholder="+33 6 12 34 56 78"
+                  size="lg"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  disabled={loading}
+                />
+              </Form.Group>
+            </>
+          )}
+
           <Form.Group className="mb-4">
-            <Form.Label htmlFor="registerPassword" size="lg">
+            <Form.Label htmlFor="registerPassword">
               Temporary Password
             </Form.Label>
             <div className="d-flex gap-2">
@@ -267,25 +350,6 @@ function Register() {
             </Form.Text>
           </Form.Group>
 
-          <Form.Group className="mb-4">
-            <Form.Label htmlFor="registerRole" size="lg">
-              Role
-            </Form.Label>
-            <Form.Select
-              id="registerRole"
-              size="lg"
-              value={role}
-              onChange={(e) => setRole(e.target.value as Role)}
-              disabled={loading}
-            >
-              {ROLE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </Form.Select>
-          </Form.Group>
-
           <div className="d-flex flex-column align-items-center gap-3">
             <Button
               variant="primary"
@@ -298,6 +362,7 @@ function Register() {
             <Button
               variant="secondary"
               size="lg"
+              type="button"
               onClick={() => navigate("/home")}
               disabled={loading}
             >

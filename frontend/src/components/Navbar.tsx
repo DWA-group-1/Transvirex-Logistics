@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Nav, Offcanvas } from "react-bootstrap";
 import { getCurrentRole, clearAuthToken, logout } from "../services/api";
+import NotificationBell from "./NotificationBell";
 
 type Role = "driver" | "dispatcher" | "billing" | "manager";
 
@@ -16,13 +17,13 @@ const allNavItems = [
     label: "Track Orders",
     icon: "bi-truck",
     path: "/track-orders",
-    roles: ["driver", "manager"],
+    roles: ["dispatcher", "manager"],
   },
   {
     label: "Plan Routes",
     icon: "bi-map",
     path: "/plan-routes",
-    roles: ["dispatcher", "manager"],
+    roles: ["driver", "manager"],
   },
   {
     label: "Invoices",
@@ -35,6 +36,24 @@ const allNavItems = [
     icon: "bi-person-plus",
     path: "/register",
     roles: ["manager"],
+  },
+  {
+    label: "Customers",
+    icon: "bi-people",
+    path: "/customers",
+    roles: ["manager", "dispatcher"],
+  },
+  {
+    label: "Hubs",
+    icon: "bi-building",
+    path: "/hubs",
+    roles: ["manager"],
+  },
+  {
+    label: "Incidents",
+    icon: "bi-exclamation-triangle",
+    path: "/incidents",
+    roles: ["manager", "dispatcher"],
   },
 ];
 
@@ -212,6 +231,7 @@ function Navbar({ isDark, onToggleTheme }: NavbarProps) {
               paddingRight: 4,
             }}
           >
+            <NotificationBell />
             {/* Theme toggle */}
             <button
               onClick={onToggleTheme}

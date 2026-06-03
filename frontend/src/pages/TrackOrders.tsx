@@ -1,420 +1,259 @@
-import { useState } from "react";
-import { Container, Button, Table, Badge, Modal, Form } from "react-bootstrap";
+import { useEffect, useState, useCallback } from "react";
+import CreateOrderModal from "./CreateOrderModal";
+import {
+  getDeliveries,
+  getDrivers,
+  assignDriver,
+  type DeliveryEnriched,
+  type DeliveryStatus,
+  type DriverRef,
+} from "../services/api";
 
-// SAMPLE DATA - Active drivers and their assignments
-const sampleDrivers = [
-  {
-    id: "DRV-001",
-    name: "John Smith",
-    status: "In Transit", // "On Duty", "In Transit", "Break", "Off Duty"
-    assignedDeliveries: 5,
-    completedDeliveries: 12,
-    location: "Downtown Hub",
-    nextStop: "Customer A, 123 Main St",
-  },
-  {
-    id: "DRV-002",
-    name: "Jane Doe",
-    status: "In Transit",
-    assignedDeliveries: 3,
-    completedDeliveries: 15,
-    location: "Suburbs Area",
-    nextStop: "Customer B, 456 Oak Ave",
-  },
-  {
-    id: "DRV-003",
-    name: "Mike Johnson",
-    status: "On Duty",
-    assignedDeliveries: 0,
-    completedDeliveries: 10,
-    location: "Main Hub",
-    nextStop: "Awaiting assignment",
-  },
-];
+const STATUS_LABELS: Record<DeliveryStatus, string> = {
+  created: "Created",
+  assigned: "Assigned",
+  picked_up: "Picked up",
+  in_transit: "In transit",
+  delivered: "Delivered",
+  cancelled: "Cancelled",
+};
 
-// SAMPLE DATA - Active orders/deliveries
-const sampleOrders = [
-  {
-    id: "ORD-001",
-    deliveryId: "DLV-2024-201",
-    customer: "Customer A",
-    address: "123 Main St",
-    status: "In Transit", // "Pending", "Assigned", "In Transit", "Delivered", "Delayed"
-    driver: "John Smith",
-    priority: "High",
-    estimatedTime: "10:30 AM",
-    alert: null,
-  },
-  {
-    id: "ORD-002",
-    deliveryId: "DLV-2024-202",
-    customer: "Customer B",
-    address: "456 Oak Ave",
-    status: "In Transit",
-    driver: "Jane Doe",
-    priority: "Medium",
-    estimatedTime: "11:00 AM",
-    alert: null,
-  },
-  {
-    id: "ORD-003",
-    deliveryId: "DLV-2024-203",
-    customer: "Customer C",
-    address: "789 Elm St",
-    status: "Delayed",
-    driver: "John Smith",
-    priority: "High",
-    estimatedTime: "09:30 AM",
-    alert: "Running 20 minutes late",
-  },
-  {
-    id: "ORD-004",
-    deliveryId: "DLV-2024-204",
-    customer: "Customer D",
-    address: "321 Pine Rd",
-    status: "Pending",
-    driver: null,
-    priority: "Low",
-    estimatedTime: "2:00 PM",
-    alert: null,
-  },
-];
+const STATUS_STYLES: Record<DeliveryStatus, { bg: string; color: string }> = {
+  created: { bg: "#e5e7eb", color: "#374151" },
+  assigned: { bg: "#dbeafe", color: "#1e40af" },
+  picked_up: { bg: "#fef3c7", color: "#92400e" },
+  in_transit: { bg: "#cffafe", color: "#155e75" },
+  delivered: { bg: "#d1fae5", color: "#065f46" },
+  cancelled: { bg: "#fee2e2", color: "#991b1b" },
+};
 
-function TrackOrders() {
-  // STATE - Track assignment modal visibility
-  const [showAssignModal, setShowAssignModal] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const [selectedDriver, setSelectedDriver] = useState("");
-
-  // STATE - Track create order modal
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newOrder, setNewOrder] = useState({
-    customer: "",
-    address: "",
-    priority: "Medium",
-  });
-
-  // HELPER - Get status badge color
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "Delivered":
-        return <Badge bg="success">{status}</Badge>;
-      case "In Transit":
-        return <Badge bg="info">{status}</Badge>;
-      case "Assigned":
-        return <Badge bg="primary">{status}</Badge>;
-      case "Pending":
-        return <Badge bg="warning">{status}</Badge>;
-      case "Delayed":
-        return <Badge bg="danger">{status}</Badge>;
-      default:
-        return <Badge bg="secondary">{status}</Badge>;
-    }
-  };
-
-  // HELPER - Get driver status badge color
-  const getDriverStatusBadge = (status: string) => {
-    switch (status) {
-      case "In Transit":
-        return <Badge bg="success">{status}</Badge>;
-      case "On Duty":
-        return <Badge bg="info">{status}</Badge>;
-      case "Break":
-        return <Badge bg="warning">{status}</Badge>;
-      case "Off Duty":
-        return <Badge bg="secondary">{status}</Badge>;
-      default:
-        return <Badge bg="secondary">{status}</Badge>;
-    }
-  };
-
-  // HELPER - Get priority badge
-  const getPriorityBadge = (priority: string) => {
-    switch (priority) {
-      case "High":
-        return <Badge bg="danger">{priority}</Badge>;
-      case "Medium":
-        return <Badge bg="warning">{priority}</Badge>;
-      case "Low":
-        return <Badge bg="info">{priority}</Badge>;
-      default:
-        return <Badge bg="secondary">{priority}</Badge>;
-    }
-  };
-
-  // HANDLER - Open assignment modal
-  const handleAssignClick = (order: any) => {
-    setSelectedOrder(order);
-    setShowAssignModal(true);
-  };
-
-  // HANDLER - Submit assignment
-  const handleSubmitAssignment = () => {
-    alert(`Order ${selectedOrder.id} assigned to ${selectedDriver}`);
-    setShowAssignModal(false);
-    setSelectedDriver("");
-    // TODO: Update API to assign order to driver
-  };
-
-  // HANDLER - Create new order
-  const handleCreateOrder = () => {
-    alert(`New order created for ${newOrder.customer}`);
-    setNewOrder({ customer: "", address: "", priority: "Medium" });
-    setShowCreateModal(false);
-    // TODO: Send order to API
-  };
-
-  // CALCULATE - Total workload
-  const totalDeliveries = sampleOrders.length;
-  const completedDeliveries = sampleOrders.filter(
-    (o) => o.status === "Delivered",
-  ).length;
-  const delayedDeliveries = sampleOrders.filter(
-    (o) => o.status === "Delayed",
-  ).length;
-
+function StatusBadge({ status }: { status: DeliveryStatus }) {
+  const s = STATUS_STYLES[status];
   return (
-    <Container fluid className="p-4">
-      {/* PAGE HEADER */}
-      <div className="mb-4">
-        <h1>Dispatcher Dashboard - Order Tracking</h1>
-        <p className="text-muted">
-          Create assignments and track real-time delivery status
-        </p>
-      </div>
-
-      {/* ACTION BUTTONS */}
-      <div className="mb-4 d-flex gap-2">
-        <Button variant="primary" onClick={() => setShowCreateModal(true)}>
-          <i className="bi bi-plus-lg me-2"></i>
-          Create New Order
-        </Button>
-      </div>
-
-      {/* WORKLOAD SUMMARY */}
-      <div className="mb-5 row">
-        <div className="col-md-3">
-          <div className="p-3 border rounded">
-            <p className="text-muted mb-1">Total Orders</p>
-            <h4>{totalDeliveries}</h4>
-          </div>
-        </div>
-        <div className="col-md-3">
-          <div className="p-3 border rounded">
-            <p className="text-muted mb-1">Completed</p>
-            <h4>{completedDeliveries}</h4>
-          </div>
-        </div>
-        <div className="col-md-3">
-          <div className="p-3 border rounded">
-            <p className="text-muted mb-1">In Transit</p>
-            <h4>
-              {sampleOrders.filter((o) => o.status === "In Transit").length}
-            </h4>
-          </div>
-        </div>
-        <div className="col-md-3">
-          <div className="p-3 border rounded bg-danger text-white">
-            <p className="mb-1">Delayed Alerts</p>
-            <h4>{delayedDeliveries}</h4>
-          </div>
-        </div>
-      </div>
-
-      {/* ACTIVE DRIVERS SECTION */}
-      <div className="mb-5">
-        <h3 className="mb-3">Active Drivers</h3>
-
-        {/* DRIVERS TABLE */}
-        <div className="table-responsive">
-          <Table striped bordered hover>
-            <thead className="table-dark">
-              <tr>
-                <th>Driver Name</th>
-                <th>Status</th>
-                <th>Assigned Deliveries</th>
-                <th>Completed Today</th>
-                <th>Current Location</th>
-                <th>Next Stop</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sampleDrivers.map((driver) => (
-                <tr key={driver.id}>
-                  <td className="fw-bold">{driver.name}</td>
-                  <td>{getDriverStatusBadge(driver.status)}</td>
-                  <td>{driver.assignedDeliveries}</td>
-                  <td>{driver.completedDeliveries}</td>
-                  <td>{driver.location}</td>
-                  <td>{driver.nextStop}</td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        </div>
-      </div>
-
-      {/* ACTIVE ORDERS / DELIVERIES SECTION */}
-      <div className="mb-5">
-        <h3 className="mb-3">Active Orders</h3>
-
-        {/* ORDERS TABLE */}
-        <div className="table-responsive">
-          <Table striped bordered hover>
-            <thead className="table-dark">
-              <tr>
-                <th>Order ID</th>
-                <th>Customer</th>
-                <th>Address</th>
-                <th>Status</th>
-                <th>Priority</th>
-                <th>Driver</th>
-                <th>Est. Time</th>
-                <th>Alert</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sampleOrders.map((order) => (
-                <tr
-                  key={order.id}
-                  className={order.alert ? "table-danger" : ""}
-                >
-                  <td className="fw-bold">{order.deliveryId}</td>
-                  <td>{order.customer}</td>
-                  <td>{order.address}</td>
-                  <td>{getStatusBadge(order.status)}</td>
-                  <td>{getPriorityBadge(order.priority)}</td>
-                  <td>{order.driver || "-"}</td>
-                  <td>{order.estimatedTime}</td>
-                  <td>
-                    {order.alert ? (
-                      <Badge bg="danger">
-                        <i className="bi bi-exclamation-triangle me-1"></i>
-                        {order.alert}
-                      </Badge>
-                    ) : (
-                      "-"
-                    )}
-                  </td>
-                  <td>
-                    {order.status === "Pending" && (
-                      <Button
-                        variant="sm"
-                        size="sm"
-                        onClick={() => handleAssignClick(order)}
-                      >
-                        Assign
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        </div>
-      </div>
-
-      {/* ASSIGNMENT MODAL */}
-      <Modal show={showAssignModal} onHide={() => setShowAssignModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Assign Order to Driver</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {selectedOrder && (
-            <>
-              <p>
-                <strong>Order:</strong> {selectedOrder.deliveryId}
-              </p>
-              <p>
-                <strong>Customer:</strong> {selectedOrder.customer}
-              </p>
-              <p>
-                <strong>Address:</strong> {selectedOrder.address}
-              </p>
-
-              <Form.Group className="mt-3">
-                <Form.Label>Select Driver</Form.Label>
-                <Form.Select
-                  value={selectedDriver}
-                  onChange={(e) => setSelectedDriver(e.target.value)}
-                >
-                  <option value="">-- Choose Driver --</option>
-                  {sampleDrivers.map((driver) => (
-                    <option key={driver.id} value={driver.name}>
-                      {driver.name} ({driver.assignedDeliveries} assigned)
-                    </option>
-                  ))}
-                </Form.Select>
-              </Form.Group>
-            </>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowAssignModal(false)}>
-            Cancel
-          </Button>
-          <Button variant="primary" onClick={handleSubmitAssignment}>
-            Assign
-          </Button>
-        </Modal.Footer>
-      </Modal>
-
-      {/* CREATE ORDER MODAL */}
-      <Modal show={showCreateModal} onHide={() => setShowCreateModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Create New Order</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form.Group className="mb-3">
-            <Form.Label>Customer Name</Form.Label>
-            <Form.Control
-              type="text"
-              placeholder="Enter customer name"
-              value={newOrder.customer}
-              onChange={(e) =>
-                setNewOrder({ ...newOrder, customer: e.target.value })
-              }
-            />
-          </Form.Group>
-
-          <Form.Group className="mb-3">
-            <Form.Label>Delivery Address</Form.Label>
-            <Form.Control
-              type="text"
-              placeholder="Enter full address"
-              value={newOrder.address}
-              onChange={(e) =>
-                setNewOrder({ ...newOrder, address: e.target.value })
-              }
-            />
-          </Form.Group>
-
-          <Form.Group>
-            <Form.Label>Priority</Form.Label>
-            <Form.Select
-              value={newOrder.priority}
-              onChange={(e) =>
-                setNewOrder({ ...newOrder, priority: e.target.value })
-              }
-            >
-              <option>Low</option>
-              <option>Medium</option>
-              <option>High</option>
-            </Form.Select>
-          </Form.Group>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowCreateModal(false)}>
-            Cancel
-          </Button>
-          <Button variant="primary" onClick={handleCreateOrder}>
-            Create Order
-          </Button>
-        </Modal.Footer>
-      </Modal>
-    </Container>
+    <span
+      style={{
+        background: s.bg,
+        color: s.color,
+        padding: "2px 10px",
+        borderRadius: 999,
+        fontSize: 12,
+        fontWeight: 600,
+      }}
+    >
+      {STATUS_LABELS[status]}
+    </span>
   );
 }
 
-export default TrackOrders;
+function driverName(d: DeliveryEnriched): string {
+  if (!d.driver) return "—";
+  return `${d.driver.first_name} ${d.driver.last_name}`;
+}
+
+export default function TrackOrders() {
+  const [deliveries, setDeliveries] = useState<DeliveryEnriched[]>([]);
+  const [drivers, setDrivers] = useState<DriverRef[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [assigning, setAssigning] = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+
+  const load = useCallback(async () => {
+    setError(null);
+    try {
+      const [del, drv] = await Promise.all([
+        getDeliveries({ limit: 100 }),
+        getDrivers(),
+      ]);
+      setDeliveries(del.items);
+      setDrivers(drv.items);
+    } catch (e: any) {
+      setError(e.message || "Failed to load deliveries");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  // Stats derived from real data
+  const total = deliveries.length;
+  const completed = deliveries.filter((d) => d.status === "delivered").length;
+  const inTransit = deliveries.filter(
+    (d) => d.status === "in_transit" || d.status === "picked_up",
+  ).length;
+  const unassigned = deliveries.filter((d) => d.status === "created").length;
+
+  async function handleAssign(deliveryId: string, driverId: string) {
+    if (!driverId) return;
+    setAssigning(deliveryId);
+    try {
+      await assignDriver(deliveryId, driverId);
+      await load(); // refresh to show the new assignment + status
+    } catch (e: any) {
+      setError(e.message || "Assignment failed");
+    } finally {
+      setAssigning(null);
+    }
+  }
+
+  if (loading) return <p style={{ padding: 24 }}>Loading deliveries…</p>;
+
+  return (
+    <div style={{ padding: 24 }}>
+      <h1 style={{ marginBottom: 4 }}>Dispatcher Dashboard — Order Tracking</h1>
+      <p style={{ color: "#6b7280", marginTop: 0 }}>
+        Create assignments and track delivery status
+      </p>
+      <button
+        onClick={() => setShowCreate(true)}
+        style={{
+          background: "#2563eb",
+          color: "white",
+          border: "none",
+          borderRadius: 6,
+          padding: "9px 16px",
+          fontWeight: 600,
+          cursor: "pointer",
+          margin: "12px 0",
+        }}
+      >
+        + Create New Order
+      </button>
+
+      {error && (
+        <div
+          style={{
+            background: "#fee2e2",
+            color: "#991b1b",
+            padding: "10px 14px",
+            borderRadius: 8,
+            margin: "12px 0",
+          }}
+        >
+          {error}
+        </div>
+      )}
+
+      {/* Stats — all derived from the real delivery list */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(4, 1fr)",
+          gap: 16,
+          margin: "20px 0",
+        }}
+      >
+        <StatCard label="Total Orders" value={total} />
+        <StatCard label="Completed" value={completed} />
+        <StatCard label="In Transit" value={inTransit} />
+        <StatCard label="Unassigned" value={unassigned} />
+      </div>
+
+      <h2>Active Orders</h2>
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <thead>
+          <tr
+            style={{ background: "#1f2937", color: "white", textAlign: "left" }}
+          >
+            <Th>Order ID</Th>
+            <Th>Customer</Th>
+            <Th>Address</Th>
+            <Th>Status</Th>
+            <Th>Priority</Th>
+            <Th>Driver</Th>
+            <Th>Action</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {deliveries.map((d) => (
+            <tr key={d.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
+              <Td mono>{d.id.slice(0, 8)}</Td>
+              <Td>{d.customer?.name ?? "—"}</Td>
+              <Td>{d.delivery_address}</Td>
+              <Td>
+                <StatusBadge status={d.status} />
+              </Td>
+              <Td>{d.priority}</Td>
+              <Td>{driverName(d)}</Td>
+              <Td>
+                {d.status === "created" ? (
+                  <select
+                    disabled={assigning === d.id}
+                    defaultValue=""
+                    onChange={(e) => handleAssign(d.id, e.target.value)}
+                  >
+                    <option value="" disabled>
+                      {assigning === d.id ? "Assigning…" : "Assign driver…"}
+                    </option>
+                    {drivers.map((drv) => (
+                      <option key={drv.id} value={drv.id}>
+                        {drv.first_name} {drv.last_name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  "—"
+                )}
+              </Td>
+            </tr>
+          ))}
+          {deliveries.length === 0 && (
+            <tr>
+              <Td colSpan={7}>No deliveries yet.</Td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+      <CreateOrderModal
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        onCreated={load}
+      />
+    </div>
+  );
+}
+
+function StatCard({ label, value }: { label: string; value: number }) {
+  return (
+    <div
+      style={{
+        border: "1px solid #e5e7eb",
+        borderRadius: 8,
+        padding: 16,
+        background: "white",
+      }}
+    >
+      <div style={{ color: "#6b7280", fontSize: 14 }}>{label}</div>
+      <div style={{ fontSize: 28, fontWeight: 700 }}>{value}</div>
+    </div>
+  );
+}
+
+function Th({ children }: { children: React.ReactNode }) {
+  return <th style={{ padding: "10px 12px", fontSize: 13 }}>{children}</th>;
+}
+
+function Td({
+  children,
+  mono,
+  colSpan,
+}: {
+  children: React.ReactNode;
+  mono?: boolean;
+  colSpan?: number;
+}) {
+  return (
+    <td
+      colSpan={colSpan}
+      style={{
+        padding: "10px 12px",
+        fontFamily: mono ? "monospace" : undefined,
+      }}
+    >
+      {children}
+    </td>
+  );
+}

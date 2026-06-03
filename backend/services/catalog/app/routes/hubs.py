@@ -46,7 +46,7 @@ async def list_hubs(
 @router.get("/by-ids", response_model=list[HubOut])
 async def list_hubs_by_ids(
     db: Annotated[AsyncSession, Depends(get_db)],
-    _: Annotated[str, Depends(require_role("manager", "dispatcher"))],
+    _: Annotated[str, Depends(require_role("manager", "dispatcher", "driver"))],
     ids: Annotated[str, Query(description="Comma-separated UUIDs")],
 ):
     try:

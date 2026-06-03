@@ -10,8 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..clients import CatalogClient, get_catalog_client
 from ..database import get_db
 from ..deps import get_identity_headers, require_role
-from ..models import Delivery, DeliveryStatus, TrackingEvent
-from ..permissions import ensure_driver_owns
+from ..models import Delivery, DeliveryStatus, Incident, IncidentStatus, TrackingEvent
+from ..permissions import ensure_driver_owns, resolve_acting_driver_id
 from ..schemas import (
     AssignDriverRequest,
     DeliveryCreate,
@@ -50,6 +50,22 @@ async def _get_or_404(db: AsyncSession, delivery_id: UUID) -> Delivery:
     return delivery
 
 
+async def _deliveries_with_open_incidents(
+    db: AsyncSession, delivery_ids: set[UUID]
+) -> set[UUID]:
+    if not delivery_ids:
+        return set()
+    result = await db.execute(
+        select(Incident.delivery_id)
+        .where(
+            Incident.delivery_id.in_(delivery_ids),
+            Incident.status == IncidentStatus.OPEN,
+        )
+        .distinct()
+    )
+    return set(result.scalars())
+
+
 async def _publish(request: Request, event_type: str, data: dict) -> None:
     await request.app.state.bus.publish("delivery.events", event_type, data)
 
@@ -58,10 +74,14 @@ async def _enrich(
     deliveries: list[Delivery],
     catalog: CatalogClient,
     headers: dict[str, str],
+    db: AsyncSession,
 ) -> list[DeliveryEnriched]:
     driver_ids = {d.assigned_driver_id for d in deliveries if d.assigned_driver_id}
     hub_ids = {d.hub_id for d in deliveries}
     customer_ids = {d.customer_id for d in deliveries}
+    delivery_ids = {d.id for d in deliveries}
+
+    flagged = await _deliveries_with_open_incidents(db, delivery_ids)
 
     try:
         drivers = await catalog.get_drivers_by_ids(driver_ids, headers=headers)
@@ -85,6 +105,7 @@ async def _enrich(
         )
         item.hub = hub_map.get(str(d.hub_id))
         item.customer = customer_map.get(str(d.customer_id))
+        item.has_open_incident = d.id in flagged
         enriched.append(item)
     return enriched
 
@@ -110,7 +131,43 @@ async def list_deliveries(
     total = (await db.execute(count_query)).scalar_one()
 
     return DeliveryList(
-        items=await _enrich(rows, catalog, headers),
+        items=await _enrich(rows, catalog, headers, db),
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get("/mine", response_model=DeliveryList)
+async def list_my_deliveries(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    catalog: Annotated[CatalogClient, Depends(get_catalog_client)],
+    headers: Annotated[dict[str, str], Depends(get_identity_headers)],
+    role: Annotated[str, Depends(require_role("driver", "manager", "dispatcher"))],
+    x_user_id: Annotated[str, Header()],
+    status_filter: DeliveryStatus | None = Query(None, alias="status"),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
+    # Resolve which driver is asking
+    driver_id = await resolve_acting_driver_id(catalog, headers, x_user_id)
+
+    query = select(Delivery).where(Delivery.assigned_driver_id == driver_id)
+    count_query = (
+        select(func.count())
+        .select_from(Delivery)
+        .where(Delivery.assigned_driver_id == driver_id)
+    )
+    if status_filter is not None:
+        query = query.where(Delivery.status == status_filter)
+        count_query = count_query.where(Delivery.status == status_filter)
+
+    query = query.order_by(Delivery.created_at.desc()).limit(limit).offset(offset)
+    rows = list((await db.execute(query)).scalars())
+    total = (await db.execute(count_query)).scalar_one()
+
+    return DeliveryList(
+        items=await _enrich(rows, catalog, headers, db),
         total=total,
         limit=limit,
         offset=offset,
@@ -126,7 +183,7 @@ async def get_delivery(
     _: Annotated[str, Depends(require_role("manager", "dispatcher", "driver"))],
 ):
     delivery = await _get_or_404(db, delivery_id)
-    enriched = await _enrich([delivery], catalog, headers)
+    enriched = await _enrich([delivery], catalog, headers, db)
     return enriched[0]
 
 
