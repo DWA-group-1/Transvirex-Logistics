@@ -70,6 +70,7 @@ export interface DeliveryEnriched {
   driver: DriverRef | null;
   hub: HubRef | null;
   customer: CustomerRef | null;
+  has_open_incidents: string | null;
 }
 
 export interface DeliveryList {
@@ -92,6 +93,20 @@ export interface DeliveryCreatePayload {
   priority?: string;
   expected_date?: string | null;
   notes?: string | null;
+}
+
+export interface IncidentWithDelivery {
+  id: string;
+  delivery_id: string;
+  type: string;
+  description: string;
+  severity: "low" | "medium" | "high";
+  status: "open" | "resolved";
+  resolution: string | null;
+  created_at: string;
+  updated_at: string;
+  delivery_address: string | null;
+  delivery_city: string | null;
 }
 
 export const getAuthToken = (): string | null =>
@@ -438,3 +453,14 @@ export const deactivateCustomer = (id: string) =>
 export const deactivateHub = (id: string) =>
   apiCall(`/catalog/hubs/${id}`, "DELETE");
 
+export const getIncidents = async (params?: {
+  status?: "open" | "resolved";
+}): Promise<IncidentWithDelivery[]> => {
+  const q = new URLSearchParams();
+  if (params?.status) q.set("status", params.status);
+  const qs = q.toString();
+  return apiCall(`/delivery/incidents${qs ? `?${qs}` : ""}`);
+};
+
+export const resolveIncident = (incidentId: string, resolution: string) =>
+  apiCall(`/delivery/incidents/${incidentId}/resolve`, "POST", { resolution });

@@ -33,6 +33,7 @@ export default function PlanRoutes() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [acting, setActing] = useState<string | null>(null);
+  const [flash, setFlash] = useState<string | null>(null);
 
   // incident modal state
   const [incidentFor, setIncidentFor] = useState<string | null>(null);
@@ -94,6 +95,20 @@ export default function PlanRoutes() {
         </div>
       )}
 
+      {flash && (
+        <div
+          style={{
+            background: "#d1fae5",
+            color: "#065f46",
+            padding: "10px 14px",
+            borderRadius: 8,
+            margin: "12px 0",
+          }}
+        >
+          {flash}
+        </div>
+      )}
+
       <h2>Active ({active.length})</h2>
       {active.length === 0 && (
         <p style={{ color: "#6b7280" }}>Nothing assigned right now.</p>
@@ -122,6 +137,21 @@ export default function PlanRoutes() {
                 </span>
                 <span style={badge(d.status)}>{STATUS_LABEL[d.status]}</span>
               </div>
+              {d.has_open_incidents && (
+                <span
+                  style={{
+                    background: "#fee2e2",
+                    color: "#991b1b",
+                    padding: "2px 10px",
+                    borderRadius: 999,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    marginLeft: 8,
+                  }}
+                >
+                  ⚠ Incident
+                </span>
+              )}
 
               <div style={{ margin: "12px 0", fontSize: 14, lineHeight: 1.6 }}>
                 <div>
@@ -212,6 +242,8 @@ export default function PlanRoutes() {
           onClose={() => setIncidentFor(null)}
           onDone={() => {
             setIncidentFor(null);
+            setFlash("Incident reported — dispatch has been notified.");
+            setTimeout(() => setFlash(null), 4000);
             load();
           }}
         />

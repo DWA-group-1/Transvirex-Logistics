@@ -210,7 +210,7 @@ export default function TrackOrders() {
       <CreateOrderModal
         open={showCreate}
         onClose={() => setShowCreate(false)}
-        onCreated={load} // reuse the existing load() to refresh the table
+        onCreated={load}
       />
     </div>
   );

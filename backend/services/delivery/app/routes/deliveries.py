@@ -18,6 +18,7 @@ from ..schemas import (
     DeliveryEnriched,
     DeliveryList,
     DeliveryOut,
+    IncidentWithDelivery,
 )
 
 logger = logging.getLogger(__name__)
