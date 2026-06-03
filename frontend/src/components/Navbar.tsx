@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Nav, Offcanvas } from "react-bootstrap";
 import { getCurrentRole, clearAuthToken, logout } from "../services/api";
+import NotificationBell from "./NotificationBell";
 
 type Role = "driver" | "dispatcher" | "billing" | "manager";
 
@@ -224,6 +225,7 @@ function Navbar({ isDark, onToggleTheme }: NavbarProps) {
               paddingRight: 4,
             }}
           >
+            <NotificationBell />
             {/* Theme toggle */}
             <button
               onClick={onToggleTheme}
