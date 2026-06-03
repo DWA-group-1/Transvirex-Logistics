@@ -70,7 +70,7 @@ export interface DeliveryEnriched {
   driver: DriverRef | null;
   hub: HubRef | null;
   customer: CustomerRef | null;
-  has_open_incidents: string | null;
+  has_open_incident: boolean;
 }
 
 export interface DeliveryList {

@@ -135,23 +135,23 @@ export default function PlanRoutes() {
                 <span style={{ fontFamily: "monospace", fontWeight: 600 }}>
                   {d.id.slice(0, 8)}
                 </span>
+                {d.has_open_incident && (
+                  <span
+                    style={{
+                      background: "#fee2e2",
+                      color: "#991b1b",
+                      padding: "2px 10px",
+                      borderRadius: 999,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      marginLeft: 8,
+                    }}
+                  >
+                    ⚠ Incident
+                  </span>
+                )}
                 <span style={badge(d.status)}>{STATUS_LABEL[d.status]}</span>
               </div>
-              {d.has_open_incidents && (
-                <span
-                  style={{
-                    background: "#fee2e2",
-                    color: "#991b1b",
-                    padding: "2px 10px",
-                    borderRadius: 999,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    marginLeft: 8,
-                  }}
-                >
-                  ⚠ Incident
-                </span>
-              )}
 
               <div style={{ margin: "12px 0", fontSize: 14, lineHeight: 1.6 }}>
                 <div>
