@@ -11,7 +11,7 @@ import {
 interface CreateOrderModalProps {
   open: boolean;
   onClose: () => void;
-  onCreated: () => void; // parent reloads the list
+  onCreated: () => void;
 }
 
 const SERVICE_TYPES = ["Express", "Standard", "Freight", "Same-day"];
@@ -130,7 +130,7 @@ export default function CreateOrderModal({
         alignItems: "flex-start",
         justifyContent: "center",
         paddingTop: 60,
-        zIndex: 1000,
+        zIndex: 2000,
       }}
       onClick={onClose}
     >
