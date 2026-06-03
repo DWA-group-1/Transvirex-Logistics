@@ -399,3 +399,23 @@ export const getHubs = async (): Promise<{ items: HubRef[] }> =>
 export const getCustomers = async (): Promise<{ items: CustomerRef[] }> =>
   apiCall("/catalog/customers?is_active=true&limit=100");
 
+export const createCustomer = async (payload: {
+  name: string;
+  contact_name?: string | null;
+  email?: string | null;
+  address: string;
+}): Promise<CustomerRef> => apiCall("/catalog/customers", "POST", payload);
+
+export const createHub = async (payload: {
+  code: string;
+  name: string;
+  address: string;
+  capacity?: number | null;
+}): Promise<HubRef> => apiCall("/catalog/hubs", "POST", payload);
+
+export const deactivateCustomer = (id: string) =>
+  apiCall(`/catalog/customers/${id}`, "DELETE");
+
+export const deactivateHub = (id: string) =>
+  apiCall(`/catalog/hubs/${id}`, "DELETE");
+

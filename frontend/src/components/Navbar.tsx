@@ -36,6 +36,18 @@ const allNavItems = [
     path: "/register",
     roles: ["manager"],
   },
+  {
+    label: "Customers",
+    icon: "bi-people",
+    path: "/customers",
+    roles: ["manager", "dispatcher"],
+  },
+  {
+    label: "Hubs",
+    icon: "bi-building",
+    path: "/hubs",
+    roles: ["manager"],
+  },
 ];
 
 interface NavbarProps {

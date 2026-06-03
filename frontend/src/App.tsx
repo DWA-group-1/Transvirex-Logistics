@@ -10,6 +10,8 @@ import TrackOrders from "./pages/TrackOrders";
 import PlanRoutes from "./pages/PlanRoutes";
 import ProtectedRoute from "./components/ProtectedRoute";
 import LogisticsHub from "./pages/LogisticsHub";
+import Customers from "./pages/Customers.tsx";
+import Hubs from "./pages/Hubs.tsx";
 
 import "./App.css";
 
@@ -89,6 +91,22 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["manager"]}>
                 <Register />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/customers"
+            element={
+              <ProtectedRoute allowedRoles={["manager", "dispatcher"]}>
+                <Customers />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/hubs"
+            element={
+              <ProtectedRoute allowedRoles={["manager"]}>
+                <Hubs />
               </ProtectedRoute>
             }
           />
