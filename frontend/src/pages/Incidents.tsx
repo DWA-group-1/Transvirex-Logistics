@@ -32,6 +32,7 @@ export default function Incidents() {
 
   const load = useCallback(async () => {
     setError(null);
+
     try {
       const res = await getIncidents(
         filter === "all" ? undefined : { status: filter },
@@ -56,12 +57,15 @@ export default function Incidents() {
 
   async function submitResolve() {
     if (!resolving) return;
+
     if (!resolution.trim()) {
       setModalError("A resolution note is required.");
       return;
     }
+
     setSubmitting(true);
     setModalError(null);
+
     try {
       await resolveIncident(resolving.id, resolution.trim());
       setResolving(null);
@@ -74,29 +78,20 @@ export default function Incidents() {
   }
 
   return (
-    <div style={{ padding: 24 }}>
+    <div style={pageStyle}>
       <div style={pageHeaderRow}>
         <div>
-          <h1 style={{ margin: 0 }}>Incidents</h1>
-          <p style={{ color: "#6b7280", margin: "4px 0 0" }}>
-            Review and resolve reported incidents
-          </p>
+          <h1 style={{ margin: 0, color: "var(--font-color)" }}>Incidents</h1>
+
+          <p style={mutedText}>Review and resolve reported incidents</p>
         </div>
+
         <div style={{ display: "flex", gap: 6 }}>
           {(["open", "resolved", "all"] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              style={{
-                padding: "6px 14px",
-                borderRadius: 6,
-                border: "1px solid #d1d5db",
-                background: filter === f ? "#2563eb" : "white",
-                color: filter === f ? "white" : "#374151",
-                cursor: "pointer",
-                fontWeight: 600,
-                textTransform: "capitalize",
-              }}
+              style={filterButtonStyle(filter === f)}
             >
               {f}
             </button>
@@ -104,32 +99,14 @@ export default function Incidents() {
         </div>
       </div>
 
-      {error && (
-        <div
-          style={{
-            background: "#fee2e2",
-            color: "#991b1b",
-            padding: "10px 14px",
-            borderRadius: 8,
-            marginBottom: 16,
-          }}
-        >
-          {error}
-        </div>
-      )}
+      {error && <div style={errorBox}>{error}</div>}
 
       {loading ? (
-        <p>Loading…</p>
+        <p style={mutedText}>Loading…</p>
       ) : (
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <table style={tableStyle}>
           <thead>
-            <tr
-              style={{
-                background: "#1f2937",
-                color: "white",
-                textAlign: "left",
-              }}
-            >
+            <tr style={tableHeaderStyle}>
               <Th>Type</Th>
               <Th>Severity</Th>
               <Th>Description</Th>
@@ -138,76 +115,60 @@ export default function Incidents() {
               <Th>Action</Th>
             </tr>
           </thead>
+
           <tbody>
             {incidents.map((inc) => {
               const sev = SEV_STYLE[inc.severity] ?? SEV_STYLE.medium;
+
               return (
-                <tr key={inc.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
+                <tr key={inc.id} style={tableRowStyle}>
                   <Td>{inc.type}</Td>
+
                   <Td>
-                    <span
-                      style={{
-                        background: sev.bg,
-                        color: sev.color,
-                        padding: "2px 10px",
-                        borderRadius: 999,
-                        fontSize: 12,
-                        fontWeight: 600,
-                      }}
-                    >
+                    <span style={badgeStyle(sev.bg, sev.color)}>
                       {inc.severity}
                     </span>
                   </Td>
+
                   <Td>{inc.description}</Td>
+
                   <Td>
                     {inc.delivery_address ?? "—"}
                     {inc.delivery_city ? `, ${inc.delivery_city}` : ""}
-                    <div
-                      style={{
-                        fontFamily: "monospace",
-                        fontSize: 11,
-                        color: "#9ca3af",
-                      }}
-                    >
+
+                    <div style={monoMutedText}>
                       {inc.delivery_id.slice(0, 8)}
                     </div>
                   </Td>
+
                   <Td>
                     {inc.status === "open" ? (
-                      <span style={{ color: "#991b1b", fontWeight: 600 }}>
+                      <span style={{ color: "#ef4444", fontWeight: 700 }}>
                         Open
                       </span>
                     ) : (
-                      <span style={{ color: "#065f46", fontWeight: 600 }}>
+                      <span style={{ color: "#22c55e", fontWeight: 700 }}>
                         Resolved
                       </span>
                     )}
                   </Td>
+
                   <Td>
                     {inc.status === "open" ? (
                       <button
                         onClick={() => openResolve(inc)}
-                        style={{
-                          background: "#16a34a",
-                          color: "white",
-                          border: "none",
-                          borderRadius: 6,
-                          padding: "6px 12px",
-                          fontWeight: 600,
-                          cursor: "pointer",
-                        }}
+                        style={resolveButton}
                       >
                         Resolve
                       </button>
                     ) : (
-                      <span style={{ color: "#6b7280", fontSize: 13 }}>
-                        {inc.resolution}
-                      </span>
+                      <span style={mutedSmallText}>{inc.resolution}</span>
                     )}
                   </Td>
                 </tr>
               );
             })}
+
             {incidents.length === 0 && (
               <tr>
                 <Td colSpan={6}>No incidents.</Td>
@@ -227,14 +188,16 @@ export default function Incidents() {
         error={modalError}
       >
         {resolving && (
-          <div style={{ fontSize: 14, color: "#374151" }}>
-            <strong>{resolving.type}</strong> ({resolving.severity})<br />
+          <div style={modalInfoBox}>
+            <strong>{resolving.type}</strong> ({resolving.severity})
+            <br />
             {resolving.description}
           </div>
         )}
+
         <Labeled label="Resolution note *">
           <textarea
-            style={{ ...inputStyle, minHeight: 80 }}
+            style={themedTextarea}
             value={resolution}
             onChange={(e) => setResolution(e.target.value)}
             placeholder="What was done to resolve this?"
@@ -243,4 +206,105 @@ export default function Incidents() {
       </FormModal>
     </div>
   );
+}
+
+const pageStyle: React.CSSProperties = {
+  padding: 24,
+  color: "var(--font-color)",
+};
+
+const mutedText: React.CSSProperties = {
+  color: "color-mix(in srgb, var(--font-color) 65%, transparent)",
+  margin: "4px 0 0",
+};
+
+const mutedSmallText: React.CSSProperties = {
+  color: "color-mix(in srgb, var(--font-color) 65%, transparent)",
+  fontSize: 13,
+};
+
+const monoMutedText: React.CSSProperties = {
+  fontFamily: "monospace",
+  fontSize: 11,
+  color: "color-mix(in srgb, var(--font-color) 55%, transparent)",
+};
+
+const errorBox: React.CSSProperties = {
+  background: "color-mix(in srgb, #ef4444 16%, var(--bg-color))",
+  color: "#ef4444",
+  border: "1px solid color-mix(in srgb, #ef4444 40%, transparent)",
+  padding: "10px 14px",
+  borderRadius: 8,
+  marginBottom: 16,
+};
+
+const tableStyle: React.CSSProperties = {
+  width: "100%",
+  borderCollapse: "collapse",
+  color: "var(--font-color)",
+};
+
+const tableHeaderStyle: React.CSSProperties = {
+  background: "var(--selected-color)",
+  color: "var(--font-color)",
+  textAlign: "left",
+};
+
+const tableRowStyle: React.CSSProperties = {
+  borderBottom:
+    "1px solid color-mix(in srgb, var(--font-color) 12%, transparent)",
+};
+
+const resolveButton: React.CSSProperties = {
+  background: "#16a34a",
+  color: "white",
+  border: "none",
+  borderRadius: 6,
+  padding: "6px 12px",
+  fontWeight: 600,
+  cursor: "pointer",
+};
+
+const modalInfoBox: React.CSSProperties = {
+  fontSize: 14,
+  color: "var(--font-color)",
+  background: "var(--selected-color)",
+  border: "1px solid color-mix(in srgb, var(--font-color) 16%, transparent)",
+  borderRadius: 8,
+  padding: 12,
+  marginBottom: 12,
+};
+
+const themedTextarea: React.CSSProperties = {
+  ...inputStyle,
+  minHeight: 80,
+  background: "var(--selected-color)",
+  color: "var(--font-color)",
+  border: "1px solid color-mix(in srgb, var(--font-color) 20%, transparent)",
+};
+
+function filterButtonStyle(active: boolean): React.CSSProperties {
+  return {
+    padding: "6px 14px",
+    borderRadius: 6,
+    border: active
+      ? "1px solid #2563eb"
+      : "1px solid color-mix(in srgb, var(--font-color) 18%, transparent)",
+    background: active ? "#2563eb" : "var(--selected-color)",
+    color: active ? "white" : "var(--font-color)",
+    cursor: "pointer",
+    fontWeight: 600,
+    textTransform: "capitalize",
+  };
+}
+
+function badgeStyle(bg: string, color: string): React.CSSProperties {
+  return {
+    background: bg,
+    color,
+    padding: "2px 10px",
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 600,
+  };
 }

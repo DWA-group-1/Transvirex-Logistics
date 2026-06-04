@@ -207,8 +207,8 @@ export default function PlanRoutes() {
             <thead>
               <tr
                 style={{
-                  background: "#1f2937",
-                  color: "white",
+                  background: "var(--selected-color)",
+                  color: "var(--font-color)",
                   textAlign: "left",
                 }}
               >
@@ -362,13 +362,14 @@ function IncidentModal({
   );
 }
 
-// styles
 const cardStyle: React.CSSProperties = {
-  border: "1px solid #e5e7eb",
+  border: "1px solid color-mix(in srgb, var(--font-color) 16%, transparent)",
   borderRadius: 12,
   padding: 16,
-  background: "white",
+  background: "var(--selected-color)",
+  color: "var(--font-color)",
 };
+
 const primaryBtn: React.CSSProperties = {
   background: "#16a34a",
   color: "white",
@@ -378,47 +379,65 @@ const primaryBtn: React.CSSProperties = {
   fontWeight: 600,
   cursor: "pointer",
 };
+
 const secondaryBtn: React.CSSProperties = {
-  background: "#e5e7eb",
-  color: "#374151",
-  border: "none",
+  background: "color-mix(in srgb, var(--font-color) 10%, transparent)",
+  color: "var(--font-color)",
+  border: "1px solid color-mix(in srgb, var(--font-color) 18%, transparent)",
   borderRadius: 6,
   padding: "9px 14px",
   fontWeight: 600,
   cursor: "pointer",
 };
-const th: React.CSSProperties = { padding: "10px 12px", fontSize: 13 };
-const td: React.CSSProperties = { padding: "10px 12px" };
+
+const th: React.CSSProperties = {
+  padding: "10px 12px",
+  fontSize: 13,
+};
+
+const td: React.CSSProperties = {
+  padding: "10px 12px",
+  color: "var(--font-color)",
+};
+
 const overlay: React.CSSProperties = {
   position: "fixed",
   inset: 0,
-  background: "rgba(0,0,0,0.4)",
+  background: "rgba(0,0,0,0.55)",
   display: "flex",
   alignItems: "flex-start",
   justifyContent: "center",
   paddingTop: 80,
   zIndex: 2000,
 };
+
 const modalBox: React.CSSProperties = {
-  background: "white",
+  background: "var(--bg-color)",
+  color: "var(--font-color)",
+  border: "1px solid color-mix(in srgb, var(--font-color) 16%, transparent)",
   borderRadius: 12,
   width: 440,
   maxWidth: "92vw",
   padding: 24,
 };
+
 const lbl: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
   gap: 4,
   fontSize: 13,
   fontWeight: 600,
+  color: "var(--font-color)",
 };
+
 const inp: React.CSSProperties = {
   padding: "8px 10px",
-  border: "1px solid #d1d5db",
+  border: "1px solid color-mix(in srgb, var(--font-color) 20%, transparent)",
   borderRadius: 6,
   fontSize: 14,
   fontWeight: 400,
+  background: "var(--selected-color)",
+  color: "var(--font-color)",
 };
 
 function badge(status: DeliveryStatus): React.CSSProperties {
@@ -430,7 +449,9 @@ function badge(status: DeliveryStatus): React.CSSProperties {
     delivered: ["#d1fae5", "#065f46"],
     cancelled: ["#fee2e2", "#991b1b"],
   };
+
   const [bg, color] = map[status];
+
   return {
     background: bg,
     color,

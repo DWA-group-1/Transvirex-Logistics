@@ -136,7 +136,9 @@ export default function CreateOrderModal({
     >
       <div
         style={{
-          background: "white",
+          background: "var(--bg-color)",
+          color: "var(--font-color)",
+          border: "1px solid color-mix(in srgb, var(--font-color) 16%, transparent)",
           borderRadius: 12,
           width: 560,
           maxWidth: "92vw",
@@ -363,7 +365,13 @@ function Field({
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4, ...style }}>
-      <label style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>
+      <label
+        style={{
+          fontSize: 13,
+          fontWeight: 600,
+          color: "var(--font-color)",
+        }}
+      >
         {label}
       </label>
       {children}
@@ -373,11 +381,17 @@ function Field({
 
 const inputStyle: React.CSSProperties = {
   padding: "8px 10px",
-  border: "1px solid #d1d5db",
+  border: "1px solid color-mix(in srgb, var(--font-color) 20%, transparent)",
   borderRadius: 6,
   fontSize: 14,
+  background: "var(--selected-color)",
+  color: "var(--font-color)",
 };
-const selectStyle: React.CSSProperties = { ...inputStyle };
+
+const selectStyle: React.CSSProperties = {
+  ...inputStyle,
+};
+
 const primaryBtn: React.CSSProperties = {
   background: "#2563eb",
   color: "white",
@@ -387,10 +401,11 @@ const primaryBtn: React.CSSProperties = {
   fontWeight: 600,
   cursor: "pointer",
 };
+
 const secondaryBtn: React.CSSProperties = {
-  background: "#e5e7eb",
-  color: "#374151",
-  border: "none",
+  background: "color-mix(in srgb, var(--font-color) 10%, transparent)",
+  color: "var(--font-color)",
+  border: "1px solid color-mix(in srgb, var(--font-color) 18%, transparent)",
   borderRadius: 6,
   padding: "9px 18px",
   fontWeight: 600,

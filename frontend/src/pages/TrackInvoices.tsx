@@ -1,14 +1,13 @@
 import { useState } from "react";
-import { Container, Button, Table, Badge } from "react-bootstrap";
+import { Badge, Button, Container, Table } from "react-bootstrap";
 
-// SAMPLE DATA - Replace with API call later
 const sampleInvoices = [
   {
     id: "INV-001",
     deliveryId: "DLV-2024-001",
     driverName: "John Smith",
     amount: 150.0,
-    status: "Paid", // "Paid", "Pending", "Overdue"
+    status: "Paid",
     dueDate: "2024-05-20",
     paidDate: "2024-05-18",
   },
@@ -33,16 +32,25 @@ const sampleInvoices = [
 ];
 
 function TrackInvoices() {
-  // STATE - Track which filter is selected
   const [filterStatus, setFilterStatus] = useState("All");
 
-  // FILTER LOGIC - Show only invoices matching the selected status
   const filteredInvoices =
     filterStatus === "All"
       ? sampleInvoices
       : sampleInvoices.filter((inv) => inv.status === filterStatus);
 
-  // HELPER - Return badge color based on payment status
+  const totalPaid = sampleInvoices
+    .filter((inv) => inv.status === "Paid")
+    .reduce((sum, inv) => sum + inv.amount, 0);
+
+  const pending = sampleInvoices
+    .filter((inv) => inv.status === "Pending")
+    .reduce((sum, inv) => sum + inv.amount, 0);
+
+  const overdue = sampleInvoices
+    .filter((inv) => inv.status === "Overdue")
+    .reduce((sum, inv) => sum + inv.amount, 0);
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "Paid":
@@ -56,40 +64,39 @@ function TrackInvoices() {
     }
   };
 
-  // HELPER - Export invoices as CSV (placeholder)
   const handleExport = () => {
     alert("Export feature coming soon!");
-    // TODO: Implement CSV export logic
   };
 
   return (
-    <Container fluid className="p-4">
-      {/* PAGE HEADER */}
+    <Container fluid className="p-4" style={{ color: "var(--font-color)" }}>
       <div className="mb-4">
         <h1>Invoice Tracking</h1>
-        <p className="text-muted">Manage billed and unbilled deliveries</p>
+        <p style={mutedText}>Manage billed and unbilled deliveries</p>
       </div>
 
-      {/* FILTER BUTTONS */}
-      <div className="mb-4 d-flex gap-2">
+      <div className="mb-4 d-flex gap-2 flex-wrap">
         <Button
           variant={filterStatus === "All" ? "primary" : "outline-primary"}
           onClick={() => setFilterStatus("All")}
         >
           All
         </Button>
+
         <Button
           variant={filterStatus === "Paid" ? "success" : "outline-success"}
           onClick={() => setFilterStatus("Paid")}
         >
           Paid
         </Button>
+
         <Button
           variant={filterStatus === "Pending" ? "warning" : "outline-warning"}
           onClick={() => setFilterStatus("Pending")}
         >
           Pending
         </Button>
+
         <Button
           variant={filterStatus === "Overdue" ? "danger" : "outline-danger"}
           onClick={() => setFilterStatus("Overdue")}
@@ -98,47 +105,44 @@ function TrackInvoices() {
         </Button>
       </div>
 
-      {/* EXPORT BUTTON */}
       <div className="mb-4">
         <Button variant="outline-secondary" onClick={handleExport}>
-          <i className="bi bi-download me-2"></i>
+          <i className="bi bi-download me-2" />
           Export to CSV
         </Button>
       </div>
 
-      {/* INVOICES TABLE */}
       <div className="table-responsive">
-        <Table striped bordered hover>
-          <thead className="table-dark">
-            <tr>
-              <th>Invoice ID</th>
-              <th>Delivery ID</th>
-              <th>Driver</th>
-              <th>Amount</th>
-              <th>Status</th>
-              <th>Due Date</th>
-              <th>Paid Date</th>
+        <Table bordered hover style={tableStyle}>
+          <thead>
+            <tr style={tableHeaderStyle}>
+              <th style={th}>Invoice ID</th>
+              <th style={th}>Delivery ID</th>
+              <th style={th}>Driver</th>
+              <th style={th}>Amount</th>
+              <th style={th}>Status</th>
+              <th style={th}>Due Date</th>
+              <th style={th}>Paid Date</th>
             </tr>
           </thead>
+
           <tbody>
-            {/* IF NO INVOICES, SHOW EMPTY STATE */}
             {filteredInvoices.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center text-muted py-4">
+                <td colSpan={7} style={emptyCellStyle}>
                   No invoices found
                 </td>
               </tr>
             ) : (
-              /* LOOP THROUGH INVOICES */
               filteredInvoices.map((invoice) => (
-                <tr key={invoice.id}>
-                  <td className="fw-bold">{invoice.id}</td>
-                  <td>{invoice.deliveryId}</td>
-                  <td>{invoice.driverName}</td>
-                  <td>${invoice.amount.toFixed(2)}</td>
-                  <td>{getStatusBadge(invoice.status)}</td>
-                  <td>{invoice.dueDate}</td>
-                  <td>{invoice.paidDate || "-"}</td>
+                <tr key={invoice.id} style={tableRowStyle}>
+                  <td style={{ ...td, fontWeight: 700 }}>{invoice.id}</td>
+                  <td style={td}>{invoice.deliveryId}</td>
+                  <td style={td}>{invoice.driverName}</td>
+                  <td style={td}>${invoice.amount.toFixed(2)}</td>
+                  <td style={td}>{getStatusBadge(invoice.status)}</td>
+                  <td style={td}>{invoice.dueDate}</td>
+                  <td style={td}>{invoice.paidDate || "-"}</td>
                 </tr>
               ))
             )}
@@ -146,53 +150,69 @@ function TrackInvoices() {
         </Table>
       </div>
 
-      {/* SUMMARY STATS */}
-      <div className="mt-4 row">
-        <div className="col-md-3">
-          <div className="p-3 border rounded">
-            <p className="text-muted mb-1">Total Invoices</p>
-            <h4>{sampleInvoices.length}</h4>
-          </div>
-        </div>
-        <div className="col-md-3">
-          <div className="p-3 border rounded">
-            <p className="text-muted mb-1">Total Paid</p>
-            <h4>
-              $
-              {sampleInvoices
-                .filter((inv) => inv.status === "Paid")
-                .reduce((sum, inv) => sum + inv.amount, 0)
-                .toFixed(2)}
-            </h4>
-          </div>
-        </div>
-        <div className="col-md-3">
-          <div className="p-3 border rounded">
-            <p className="text-muted mb-1">Pending</p>
-            <h4>
-              $
-              {sampleInvoices
-                .filter((inv) => inv.status === "Pending")
-                .reduce((sum, inv) => sum + inv.amount, 0)
-                .toFixed(2)}
-            </h4>
-          </div>
-        </div>
-        <div className="col-md-3">
-          <div className="p-3 border rounded">
-            <p className="text-muted mb-1">Overdue</p>
-            <h4>
-              $
-              {sampleInvoices
-                .filter((inv) => inv.status === "Overdue")
-                .reduce((sum, inv) => sum + inv.amount, 0)
-                .toFixed(2)}
-            </h4>
-          </div>
-        </div>
+      <div className="mt-4 row g-4">
+        <SummaryCard label="Total Invoices" value={sampleInvoices.length} />
+        <SummaryCard label="Total Paid" value={`$${totalPaid.toFixed(2)}`} />
+        <SummaryCard label="Pending" value={`$${pending.toFixed(2)}`} />
+        <SummaryCard label="Overdue" value={`$${overdue.toFixed(2)}`} />
       </div>
     </Container>
   );
 }
+
+function SummaryCard({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="col-md-3">
+      <div style={summaryCardStyle}>
+        <p style={mutedText}>{label}</p>
+        <h4 style={{ margin: 0, color: "var(--font-color)" }}>{value}</h4>
+      </div>
+    </div>
+  );
+}
+
+const mutedText: React.CSSProperties = {
+  color: "color-mix(in srgb, var(--font-color) 65%, transparent)",
+};
+
+const tableStyle: React.CSSProperties = {
+  color: "var(--font-color)",
+  borderColor: "color-mix(in srgb, var(--font-color) 18%, transparent)",
+};
+
+const tableHeaderStyle: React.CSSProperties = {
+  background: "var(--selected-color)",
+  color: "var(--font-color)",
+};
+
+const tableRowStyle: React.CSSProperties = {
+  background: "color-mix(in srgb, var(--font-color) 4%, transparent)",
+  color: "var(--font-color)",
+};
+
+const th: React.CSSProperties = {
+  padding: "12px",
+};
+
+const td: React.CSSProperties = {
+  padding: "12px",
+  color: "var(--font-color)",
+  background: "transparent",
+};
+
+const emptyCellStyle: React.CSSProperties = {
+  ...td,
+  textAlign: "center",
+  color: "color-mix(in srgb, var(--font-color) 65%, transparent)",
+  padding: 24,
+};
+
+const summaryCardStyle: React.CSSProperties = {
+  padding: 20,
+  border: "1px solid color-mix(in srgb, var(--font-color) 16%, transparent)",
+  borderRadius: 8,
+  background: "var(--selected-color)",
+  color: "var(--font-color)",
+};
 
 export default TrackInvoices;
