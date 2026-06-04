@@ -1,0 +1,10 @@
+[tool.uv.workspace]
+members = [
+    "packages/*",
+    "services/*",
+    "gateway",
+]
+
+[tool.uv.sources]
+transvirex-common = { workspace = true }
+

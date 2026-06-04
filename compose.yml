@@ -7,6 +7,7 @@ services:
       GATEWAY_AUTH_URL: http://auth:8000
       GATEWAY_NOTIF_URL: http://notification:8000
       GATEWAY_CATALOG_URL: http://catalog:8000
+      GATEWAY_DELIVERY_URL: http://delivery:8000
       GATEWAY_JWT_ALGORITHM: ${JWT_ALGORITHM}
       GATEWAY_CORS_ORIGINS: '["http://localhost:5173","http://localhost:4173"]'
     ports:
@@ -19,6 +20,8 @@ services:
       notification:
         condition: service_healthy
       catalog:
+        condition: service_healthy
+      delivery:
         condition: service_healthy
 
   # ─── Redis ──────────────────────────────────────────────────────────────────────────
@@ -52,7 +55,9 @@ services:
 
   # ─── Auth Service ──────────────────────────────────────────────────────────
   auth:
-    build: ./backend/services/auth
+    build:
+      context: ./backend
+      dockerfile: services/auth/Dockerfile
     container_name: transvirex-auth
     restart: unless-stopped
     environment:
@@ -74,17 +79,22 @@ services:
       retries: 5
       start_period: 30s
     volumes:
-      - ./backend/services/auth/:/app:Z
+      - ./backend/services/auth/:/workspace/services/auth:Z
+      - ./backend/packages/common/:/workspace/packages/common:Z
       - ./keys:/run/secrets/keys:ro,z
     command:
       [
-        "uvicorn",
-        "app.main:app",
-        "--host",
-        "0.0.0.0",
-        "--port",
+        uvicorn,
+        app.main:app,
+        --host,
+        0.0.0.0,
+        --port,
         "8000",
-        "--reload",
+        --reload,
+        --reload-dir,
+        /workspace/services/auth/app,
+        --reload-dir,
+        /workspace/packages/common/src,
       ]
 
   # ─── PostgreSQL - NotificationDB ──────────────────────────────────────────
