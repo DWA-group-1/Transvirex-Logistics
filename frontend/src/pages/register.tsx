@@ -19,16 +19,19 @@ function generatePassword(): string {
   const digits = "0123456789";
   const symbols = "!@#$%^&*()-_=+";
   const all = upper + lower + digits + symbols;
+
   const required = [
     upper[Math.floor(Math.random() * upper.length)],
     lower[Math.floor(Math.random() * lower.length)],
     digits[Math.floor(Math.random() * digits.length)],
     symbols[Math.floor(Math.random() * symbols.length)],
   ];
+
   const rest = Array.from(
     { length: 8 },
     () => all[Math.floor(Math.random() * all.length)],
   );
+
   return [...required, ...rest].sort(() => Math.random() - 0.5).join("");
 }
 
@@ -48,60 +51,43 @@ function CredentialsScreen({
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
 
-  const loginBlock = `Transvirex Logistics — Login Credentials\n\nEmail:    ${credentials.email}\nPassword: ${credentials.password}\nRole:     ${credentials.role}\n\n⚠️  This password is temporary. You will be asked to change it on first login.`;
+  const loginBlock = `Transvirex Logistics — Login Credentials\n\nEmail:    ${credentials.email}\nPassword: ${credentials.password}\nRole:     ${credentials.role}\n\nThis password is temporary. You will be asked to change it on first login.`;
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(loginBlock).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    });
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(loginBlock);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
   };
 
   return (
     <Container
       className="d-flex align-items-center justify-content-center"
-      style={{ minHeight: "100vh", maxWidth: "500px" }}
+      style={centerContainer}
     >
       <div className="container-fluid">
-        <h4 className="mb-4 fw-bold">Account Created</h4>
+        <h4 className="mb-4 fw-bold" style={{ color: "var(--font-color)" }}>
+          Account Created
+        </h4>
 
-        <div className="border border-dark p-4 rounded-4">
+        <div style={panelStyle}>
           <Alert variant="warning" className="mb-4">
             <i className="bi bi-exclamation-triangle-fill me-2" />
             These credentials are shown <strong>one time only</strong>. Copy
             them before leaving this screen.
           </Alert>
 
-          <div
-            className="rounded-3 p-3 mb-4 font-monospace"
-            style={{
-              background: "var(--bs-secondary-bg, #f8f9fa)",
-              fontSize: 14,
-              lineHeight: 1.8,
-            }}
-          >
-            <div>
-              <span style={{ opacity: 0.6 }}>Email</span>
-              <br />
-              <strong>{credentials.email}</strong>
-            </div>
-            <hr className="my-2" />
-            <div>
-              <span style={{ opacity: 0.6 }}>Temporary password</span>
-              <br />
-              <strong>{credentials.password}</strong>
-            </div>
-            <hr className="my-2" />
-            <div>
-              <span style={{ opacity: 0.6 }}>Role</span>
-              <br />
-              <strong style={{ textTransform: "capitalize" }}>
-                {credentials.role}
-              </strong>
-            </div>
+          <div style={credentialsBox}>
+            <CredentialItem label="Email" value={credentials.email} />
+            <hr style={hrStyle} />
+            <CredentialItem
+              label="Temporary password"
+              value={credentials.password}
+            />
+            <hr style={hrStyle} />
+            <CredentialItem label="Role" value={credentials.role} capitalize />
           </div>
 
-          <p className="text-muted small mb-4">
+          <p style={mutedText}>
             The worker must change this password on their first login.
           </p>
 
@@ -110,10 +96,12 @@ function CredentialsScreen({
               <i className="bi bi-clipboard me-2" />
               {copied ? "Copied!" : "Copy login info"}
             </Button>
+
             <Button variant="outline-primary" size="lg" onClick={onAddAnother}>
               <i className="bi bi-person-plus me-2" />
               Add another worker
             </Button>
+
             <Button
               variant="secondary"
               size="lg"
@@ -128,8 +116,29 @@ function CredentialsScreen({
   );
 }
 
+function CredentialItem({
+  label,
+  value,
+  capitalize,
+}: {
+  label: string;
+  value: string;
+  capitalize?: boolean;
+}) {
+  return (
+    <div>
+      <span style={mutedText}>{label}</span>
+      <br />
+      <strong style={{ textTransform: capitalize ? "capitalize" : undefined }}>
+        {value}
+      </strong>
+    </div>
+  );
+}
+
 function Register() {
   const navigate = useNavigate();
+
   const [role, setRole] = useState<Role>("driver");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -141,19 +150,19 @@ function Register() {
   const [created, setCreated] = useState<CreatedCredentials | null>(null);
 
   const isDriver = role === "driver";
-
   const currentRole = getCurrentRole();
+
   if (currentRole !== "manager") {
     return (
       <Container
         className="d-flex align-items-center justify-content-center"
-        style={{ minHeight: "100vh" }}
+        style={centerContainer}
       >
-        <div className="text-center">
+        <div className="text-center" style={{ color: "var(--font-color)" }}>
           <h4 className="mb-3">Access Denied</h4>
-          <p className="text-muted mb-4">
-            Only managers can create new accounts.
-          </p>
+
+          <p style={mutedText}>Only managers can create new accounts.</p>
+
           <Button variant="primary" onClick={() => navigate("/home")}>
             Back to Dashboard
           </Button>
@@ -190,16 +199,19 @@ function Register() {
       setError("Please fill in all required fields.");
       return;
     }
+
     if (password.length < 8) {
       setError("Password must be at least 8 characters.");
       return;
     }
+
     if (isDriver && (!firstName.trim() || !lastName.trim())) {
       setError("First and last name are required for drivers.");
       return;
     }
 
     setLoading(true);
+
     try {
       if (isDriver) {
         await createDriver({
@@ -216,6 +228,7 @@ function Register() {
           role: role as "dispatcher" | "billing" | "manager",
         });
       }
+
       setCreated({ email: email.trim(), password, role });
     } catch (err: any) {
       setError(err.message || "Registration failed.");
@@ -227,15 +240,17 @@ function Register() {
   return (
     <Container
       className="d-flex align-items-center justify-content-center"
-      style={{ minHeight: "100vh", maxWidth: "455px" }}
+      style={centerContainer}
     >
       <div className="container-fluid">
-        <h4 className="mb-4 fw-bold">Create Worker Account</h4>
-
-        <Form
-          className="border border-dark p-4 rounded-4"
-          onSubmit={handleSubmit}
+        <h4
+          className="mb-4 fw-bold text-center"
+          style={{ color: "var(--font-color)" }}
         >
+          Create Worker Account
+        </h4>
+
+        <Form style={panelStyle} onSubmit={handleSubmit}>
           {error && (
             <Alert variant="danger" onClose={() => setError(null)} dismissible>
               {error}
@@ -243,13 +258,17 @@ function Register() {
           )}
 
           <Form.Group className="mb-4">
-            <Form.Label htmlFor="registerRole">Role</Form.Label>
+            <Form.Label style={labelStyle} htmlFor="registerRole">
+              Role
+            </Form.Label>
+
             <Form.Select
               id="registerRole"
               size="lg"
               value={role}
               onChange={(e) => setRole(e.target.value as Role)}
               disabled={loading}
+              style={inputStyle}
             >
               {ROLE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -260,7 +279,10 @@ function Register() {
           </Form.Group>
 
           <Form.Group className="mb-4">
-            <Form.Label htmlFor="registerEmail">Email</Form.Label>
+            <Form.Label style={labelStyle} htmlFor="registerEmail">
+              Email
+            </Form.Label>
+
             <Form.Control
               type="email"
               id="registerEmail"
@@ -269,17 +291,18 @@ function Register() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={loading}
+              style={inputStyle}
             />
           </Form.Group>
 
-          {/* Driver-only fields */}
           {isDriver && (
             <>
               <div className="d-flex gap-3 mb-4">
                 <Form.Group className="flex-fill">
-                  <Form.Label htmlFor="registerFirstName">
+                  <Form.Label style={labelStyle} htmlFor="registerFirstName">
                     First name
                   </Form.Label>
+
                   <Form.Control
                     id="registerFirstName"
                     placeholder="Marie"
@@ -287,10 +310,15 @@ function Register() {
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     disabled={loading}
+                    style={inputStyle}
                   />
                 </Form.Group>
+
                 <Form.Group className="flex-fill">
-                  <Form.Label htmlFor="registerLastName">Last name</Form.Label>
+                  <Form.Label style={labelStyle} htmlFor="registerLastName">
+                    Last name
+                  </Form.Label>
+
                   <Form.Control
                     id="registerLastName"
                     placeholder="Dupont"
@@ -298,14 +326,16 @@ function Register() {
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     disabled={loading}
+                    style={inputStyle}
                   />
                 </Form.Group>
               </div>
 
               <Form.Group className="mb-4">
-                <Form.Label htmlFor="registerPhone">
+                <Form.Label style={labelStyle} htmlFor="registerPhone">
                   Phone (optional)
                 </Form.Label>
+
                 <Form.Control
                   id="registerPhone"
                   placeholder="+33 6 12 34 56 78"
@@ -313,15 +343,17 @@ function Register() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   disabled={loading}
+                  style={inputStyle}
                 />
               </Form.Group>
             </>
           )}
 
           <Form.Group className="mb-4">
-            <Form.Label htmlFor="registerPassword">
+            <Form.Label style={labelStyle} htmlFor="registerPassword">
               Temporary Password
             </Form.Label>
+
             <div className="d-flex gap-2">
               <Form.Control
                 type="text"
@@ -331,7 +363,9 @@ function Register() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
+                style={inputStyle}
               />
+
               <Button
                 variant="outline-secondary"
                 size="lg"
@@ -345,7 +379,8 @@ function Register() {
                 Generate
               </Button>
             </div>
-            <Form.Text className="text-muted">
+
+            <Form.Text style={mutedText}>
               The worker will be asked to change this on first login.
             </Form.Text>
           </Form.Group>
@@ -359,6 +394,7 @@ function Register() {
             >
               {loading ? "Creating…" : "Create Account"}
             </Button>
+
             <Button
               variant="secondary"
               size="lg"
@@ -374,5 +410,50 @@ function Register() {
     </Container>
   );
 }
+
+const centerContainer: React.CSSProperties = {
+  minHeight: "100vh",
+  maxWidth: "455px",
+  color: "var(--font-color)",
+};
+
+const panelStyle: React.CSSProperties = {
+  background: "color-mix(in srgb, var(--selected-color) 55%, transparent)",
+  border: "1px solid color-mix(in srgb, var(--font-color) 16%, transparent)",
+  color: "var(--font-color)",
+  padding: 24,
+  borderRadius: 16,
+};
+
+const labelStyle: React.CSSProperties = {
+  color: "var(--font-color)",
+  fontWeight: 500,
+};
+
+const inputStyle: React.CSSProperties = {
+  background: "var(--selected-color)",
+  color: "var(--font-color)",
+  border: "1px solid color-mix(in srgb, var(--font-color) 20%, transparent)",
+};
+
+const mutedText: React.CSSProperties = {
+  color: "color-mix(in srgb, var(--font-color) 68%, transparent)",
+};
+
+const credentialsBox: React.CSSProperties = {
+  background: "var(--selected-color)",
+  color: "var(--font-color)",
+  border: "1px solid color-mix(in srgb, var(--font-color) 16%, transparent)",
+  borderRadius: 12,
+  padding: 16,
+  marginBottom: 16,
+  fontFamily: "monospace",
+  fontSize: 14,
+  lineHeight: 1.8,
+};
+
+const hrStyle: React.CSSProperties = {
+  borderColor: "color-mix(in srgb, var(--font-color) 18%, transparent)",
+};
 
 export default Register;

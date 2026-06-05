@@ -24,6 +24,7 @@ export default function Hubs() {
 
   const load = useCallback(async () => {
     setListError(null);
+
     try {
       const res = await getHubs();
       setHubs(res.items);
@@ -49,8 +50,10 @@ export default function Hubs() {
       setFormError("Code, name and address are required.");
       return;
     }
+
     setSubmitting(true);
     setFormError(null);
+
     try {
       await createHub({
         code: form.code.trim(),
@@ -58,6 +61,7 @@ export default function Hubs() {
         address: form.address.trim(),
         capacity: form.capacity === "" ? null : Number(form.capacity),
       });
+
       setOpen(false);
       await load();
     } catch (e: any) {
@@ -68,46 +72,31 @@ export default function Hubs() {
   }
 
   return (
-    <div style={{ padding: 24 }}>
+    <div style={pageStyle}>
       <div style={pageHeaderRow}>
         <div>
-          <h1 style={{ margin: 0 }}>Hubs</h1>
-          <p style={{ color: "#6b7280", margin: "4px 0 0" }}>
+          <h1 style={{ margin: 0, color: "var(--font-color)" }}>Hubs</h1>
+
+          <p style={mutedText}>
             Manage depots and warehouses
-            {!loading && ` · ${hubs.length} hub${hubs.length === 1 ? "" : "s"}`}
+            {!loading &&
+              ` · ${hubs.length} hub${hubs.length === 1 ? "" : "s"}`}
           </p>
         </div>
+
         <button style={newButton} onClick={openModal}>
           + New Hub
         </button>
       </div>
 
-      {listError && (
-        <div
-          style={{
-            background: "#fee2e2",
-            color: "#991b1b",
-            padding: "10px 14px",
-            borderRadius: 8,
-            marginBottom: 16,
-          }}
-        >
-          {listError}
-        </div>
-      )}
+      {listError && <div style={errorBox}>{listError}</div>}
 
       {loading ? (
-        <p>Loading…</p>
+        <p style={mutedText}>Loading…</p>
       ) : (
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <table style={tableStyle}>
           <thead>
-            <tr
-              style={{
-                background: "#1f2937",
-                color: "white",
-                textAlign: "left",
-              }}
-            >
+            <tr style={tableHeaderStyle}>
               <Th>Code</Th>
               <Th>Name</Th>
               <Th>Address</Th>
@@ -115,9 +104,10 @@ export default function Hubs() {
               <Th>Status</Th>
             </tr>
           </thead>
+
           <tbody>
             {hubs.map((h) => (
-              <tr key={h.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
+              <tr key={h.id} style={tableRowStyle}>
                 <Td>{h.code}</Td>
                 <Td>{h.name}</Td>
                 <Td>{h.address}</Td>
@@ -125,6 +115,7 @@ export default function Hubs() {
                 <Td>{h.is_active ? "Active" : "Inactive"}</Td>
               </tr>
             ))}
+
             {hubs.length === 0 && (
               <tr>
                 <Td colSpan={5}>No hubs yet. Create one to get started.</Td>
@@ -145,33 +136,36 @@ export default function Hubs() {
       >
         <Labeled label="Code *">
           <input
-            style={inputStyle}
+            style={themedInput}
             value={form.code}
             onChange={(e) => setForm({ ...form, code: e.target.value })}
             placeholder="PAR-01"
           />
         </Labeled>
+
         <Labeled label="Name *">
           <input
-            style={inputStyle}
+            style={themedInput}
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             placeholder="Paris Nord Depot"
           />
         </Labeled>
+
         <Labeled label="Address *">
           <input
-            style={inputStyle}
+            style={themedInput}
             value={form.address}
             onChange={(e) => setForm({ ...form, address: e.target.value })}
             placeholder="12 rue de la Logistique, 75018 Paris"
           />
         </Labeled>
+
         <Labeled label="Capacity">
           <input
             type="number"
             min={0}
-            style={inputStyle}
+            style={themedInput}
             value={form.capacity}
             onChange={(e) => setForm({ ...form, capacity: e.target.value })}
             placeholder="optional"
@@ -181,3 +175,46 @@ export default function Hubs() {
     </div>
   );
 }
+
+const pageStyle: React.CSSProperties = {
+  padding: 24,
+  color: "var(--font-color)",
+};
+
+const mutedText: React.CSSProperties = {
+  color: "color-mix(in srgb, var(--font-color) 65%, transparent)",
+  margin: "4px 0 0",
+};
+
+const errorBox: React.CSSProperties = {
+  background: "color-mix(in srgb, #ef4444 16%, var(--bg-color))",
+  color: "#ef4444",
+  border: "1px solid color-mix(in srgb, #ef4444 40%, transparent)",
+  padding: "10px 14px",
+  borderRadius: 8,
+  marginBottom: 16,
+};
+
+const tableStyle: React.CSSProperties = {
+  width: "100%",
+  borderCollapse: "collapse",
+  color: "var(--font-color)",
+};
+
+const tableHeaderStyle: React.CSSProperties = {
+  background: "var(--selected-color)",
+  color: "var(--font-color)",
+  textAlign: "left",
+};
+
+const tableRowStyle: React.CSSProperties = {
+  borderBottom:
+    "1px solid color-mix(in srgb, var(--font-color) 12%, transparent)",
+};
+
+const themedInput: React.CSSProperties = {
+  ...inputStyle,
+  background: "var(--selected-color)",
+  color: "var(--font-color)",
+  border: "1px solid color-mix(in srgb, var(--font-color) 20%, transparent)",
+};

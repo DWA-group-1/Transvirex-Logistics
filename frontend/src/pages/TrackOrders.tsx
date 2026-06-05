@@ -156,7 +156,11 @@ export default function TrackOrders() {
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr
-            style={{ background: "#1f2937", color: "white", textAlign: "left" }}
+            style={{
+              background: "var(--selected-color)",
+              color: "var(--font-color)",
+              textAlign: "left",
+            }}
           >
             <Th>Order ID</Th>
             <Th>Customer</Th>
@@ -220,14 +224,31 @@ function StatCard({ label, value }: { label: string; value: number }) {
   return (
     <div
       style={{
-        border: "1px solid #e5e7eb",
+        border: "1px solid color-mix(in srgb, var(--font-color) 12%, transparent)",
         borderRadius: 8,
         padding: 16,
-        background: "white",
+        background: "var(--selected-color)",
+        color: "var(--font-color)",
       }}
     >
-      <div style={{ color: "#6b7280", fontSize: 14 }}>{label}</div>
-      <div style={{ fontSize: 28, fontWeight: 700 }}>{value}</div>
+      <div
+        style={{
+          color: "color-mix(in srgb, var(--font-color) 70%, transparent)",
+          fontSize: 14,
+        }}
+      >
+        {label}
+      </div>
+
+      <div
+        style={{
+          color: "var(--font-color)",
+          fontSize: 28,
+          fontWeight: 700,
+        }}
+      >
+        {value}
+      </div>
     </div>
   );
 }

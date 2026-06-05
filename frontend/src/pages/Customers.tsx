@@ -28,6 +28,7 @@ export default function Customers() {
 
   const load = useCallback(async () => {
     setListError(null);
+
     try {
       const res = await getCustomers();
       setCustomers(res.items);
@@ -53,8 +54,10 @@ export default function Customers() {
       setFormError("Company name and address are required.");
       return;
     }
+
     setSubmitting(true);
     setFormError(null);
+
     try {
       await createCustomer({
         name: form.name.trim(),
@@ -62,6 +65,7 @@ export default function Customers() {
         email: form.email.trim() || null,
         address: form.address.trim(),
       });
+
       setOpen(false);
       await load();
     } catch (e: any) {
@@ -72,47 +76,33 @@ export default function Customers() {
   }
 
   return (
-    <div style={{ padding: 24 }}>
+    <div style={pageStyle}>
       <div style={pageHeaderRow}>
         <div>
-          <h1 style={{ margin: 0 }}>Customers</h1>
-          <p style={{ color: "#6b7280", margin: "4px 0 0" }}>
+          <h1 style={{ margin: 0, color: "var(--font-color)" }}>Customers</h1>
+
+          <p style={mutedText}>
             Manage customer accounts referenced by deliveries
             {!loading &&
-              ` · ${customers.length} customer${customers.length === 1 ? "" : "s"}`}
+              ` · ${customers.length} customer${
+                customers.length === 1 ? "" : "s"
+              }`}
           </p>
         </div>
+
         <button style={newButton} onClick={openModal}>
           + New Customer
         </button>
       </div>
 
-      {listError && (
-        <div
-          style={{
-            background: "#fee2e2",
-            color: "#991b1b",
-            padding: "10px 14px",
-            borderRadius: 8,
-            marginBottom: 16,
-          }}
-        >
-          {listError}
-        </div>
-      )}
+      {listError && <div style={errorBox}>{listError}</div>}
 
       {loading ? (
-        <p>Loading…</p>
+        <p style={mutedText}>Loading…</p>
       ) : (
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <table style={tableStyle}>
           <thead>
-            <tr
-              style={{
-                background: "#1f2937",
-                color: "white",
-                textAlign: "left",
-              }}
-            >
+            <tr style={tableHeaderStyle}>
               <Th>Company</Th>
               <Th>Contact</Th>
               <Th>Email</Th>
@@ -120,9 +110,10 @@ export default function Customers() {
               <Th>Status</Th>
             </tr>
           </thead>
+
           <tbody>
             {customers.map((c) => (
-              <tr key={c.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
+              <tr key={c.id} style={tableRowStyle}>
                 <Td>{c.name}</Td>
                 <Td>{c.contact_name ?? "—"}</Td>
                 <Td>{c.email ?? "—"}</Td>
@@ -130,6 +121,7 @@ export default function Customers() {
                 <Td>{c.is_active ? "Active" : "Inactive"}</Td>
               </tr>
             ))}
+
             {customers.length === 0 && (
               <tr>
                 <Td colSpan={5}>
@@ -152,31 +144,36 @@ export default function Customers() {
       >
         <Labeled label="Company name *">
           <input
-            style={inputStyle}
+            style={themedInput}
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             placeholder="EcomExpress SAS"
           />
         </Labeled>
+
         <Labeled label="Contact name">
           <input
-            style={inputStyle}
+            style={themedInput}
             value={form.contact_name}
-            onChange={(e) => setForm({ ...form, contact_name: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, contact_name: e.target.value })
+            }
             placeholder="John Smith"
           />
         </Labeled>
+
         <Labeled label="Email">
           <input
-            style={inputStyle}
+            style={themedInput}
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
             placeholder="contact@ecomexpress.fr"
           />
         </Labeled>
+
         <Labeled label="Address *">
           <input
-            style={inputStyle}
+            style={themedInput}
             value={form.address}
             onChange={(e) => setForm({ ...form, address: e.target.value })}
             placeholder="15 Commerce Street, Paris"
@@ -186,3 +183,46 @@ export default function Customers() {
     </div>
   );
 }
+
+const pageStyle: React.CSSProperties = {
+  padding: 24,
+  color: "var(--font-color)",
+};
+
+const mutedText: React.CSSProperties = {
+  color: "color-mix(in srgb, var(--font-color) 65%, transparent)",
+  margin: "4px 0 0",
+};
+
+const errorBox: React.CSSProperties = {
+  background: "color-mix(in srgb, #ef4444 16%, var(--bg-color))",
+  color: "#ef4444",
+  border: "1px solid color-mix(in srgb, #ef4444 40%, transparent)",
+  padding: "10px 14px",
+  borderRadius: 8,
+  marginBottom: 16,
+};
+
+const tableStyle: React.CSSProperties = {
+  width: "100%",
+  borderCollapse: "collapse",
+  color: "var(--font-color)",
+};
+
+const tableHeaderStyle: React.CSSProperties = {
+  background: "var(--selected-color)",
+  color: "var(--font-color)",
+  textAlign: "left",
+};
+
+const tableRowStyle: React.CSSProperties = {
+  borderBottom:
+    "1px solid color-mix(in srgb, var(--font-color) 12%, transparent)",
+};
+
+const themedInput: React.CSSProperties = {
+  ...inputStyle,
+  background: "var(--selected-color)",
+  color: "var(--font-color)",
+  border: "1px solid color-mix(in srgb, var(--font-color) 20%, transparent)",
+};
