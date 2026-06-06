@@ -316,6 +316,7 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "redis" },
     { name = "sqlalchemy" },
+    { name = "transvirex-common" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -337,6 +338,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "redis", specifier = ">=5.0" },
     { name = "sqlalchemy", specifier = ">=2.0.49" },
+    { name = "transvirex-common", editable = "packages/common" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.46.0" },
 ]
 

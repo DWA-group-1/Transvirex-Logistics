@@ -239,7 +239,9 @@ services:
 
   # ─── Delivery Service ─────────────────────────────────────────────────
   delivery:
-    build: ./backend/services/delivery
+    build:
+      context: ./backend
+      dockerfile: services/delivery/Dockerfile
     container_name: transvirex-delivery
     restart: unless-stopped
     environment:
