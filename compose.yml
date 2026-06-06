@@ -115,7 +115,9 @@ services:
 
   # ─── Notification Service ─────────────────────────────────────────────────
   notification:
-    build: ./backend/services/notification
+    build:
+      context: ./backend
+      dockerfile: services/notification/Dockerfile
     container_name: transvirex-notif
     restart: unless-stopped
     environment:
@@ -153,6 +155,8 @@ services:
         "--port",
         "8000",
         "--reload",
+        "--reload-dir",
+        "app",
       ]
 
   # ─── PostgreSQL - CatalogDB ──────────────────────────────────────────
