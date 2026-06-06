@@ -173,7 +173,9 @@ services:
 
   # ─── Catalog Service ─────────────────────────────────────────────────
   catalog:
-    build: ./backend/services/catalog
+    build:
+      context: ./backend
+      dockerfile: services/catalog/Dockerfile
     container_name: transvirex-catalog
     restart: unless-stopped
     environment:
