@@ -1,5 +1,5 @@
+from typing import Optional
 from uuid import UUID
-from typing import Optional  # Add this import
 
 from pydantic import BaseModel, EmailStr
 
@@ -20,7 +20,7 @@ class UserOut(BaseModel):
     role: Role
 
     class Config:
-        from_attributes = True  # Allow ORM model → Pydantic conversion
+        from_attributes = True
 
 
 class Token(BaseModel):
@@ -30,21 +30,24 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     email: str | None = None
-    
+
+
 class TokenPair(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+
 
 class RefreshRequest(BaseModel):
     refresh_token: str
 
 
 class ChangePasswordRequest(BaseModel):
-    current_password: Optional[str] = None  # Optional for first-time change
+    current_password: Optional[str] = None
     new_password: str
     confirm_password: str
 
 
 class LoginResponse(TokenPair):
-    must_change_password: bool 
+    must_change_password: bool
+

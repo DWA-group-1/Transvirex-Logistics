@@ -6,10 +6,10 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from transvirex_common.database import get_db
+from transvirex_common.deps import get_authorization_header, require_role
 
 from ..clients import AuthClient, get_auth_client
-from ..database import get_db
-from ..deps import get_authorization_header, require_role
 from ..models import Driver
 from ..schemas import DriverCreate, DriverList, DriverOut, DriverUpdate
 

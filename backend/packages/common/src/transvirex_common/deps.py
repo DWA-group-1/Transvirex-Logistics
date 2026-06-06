@@ -18,3 +18,11 @@ def get_identity_headers(
     x_user_id: Annotated[str, Header()], x_user_role: Annotated[str, Header()]
 ) -> dict[str, str]:
     return {"X-User-Id": x_user_id, "X-User-Role": x_user_role}
+
+
+def get_authorization_header(authorization: Annotated[str, Header()]) -> str:
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED, "Invalid Authorization header"
+        )
+    return authorization[len("Bearer ") :]

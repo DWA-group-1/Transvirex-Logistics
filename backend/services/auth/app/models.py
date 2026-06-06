@@ -3,13 +3,11 @@ from enum import Enum
 from uuid import UUID, uuid4
 
 from sqlalchemy import DateTime
-from sqlalchemy import ForeignKey, String
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import func
+from sqlalchemy import ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
-
-from .database import Base
+from transvirex_common.database import Base
 
 
 class Role(str, Enum):
@@ -43,10 +41,11 @@ class User(Base):
         DateTime(timezone=True),
         server_default=func.now(),
     )
-    
+
     must_change_password: Mapped[bool] = mapped_column(
         default=True, nullable=False, server_default="true"
     )
+
 
 class RefreshToken(Base):
     __tablename__ = "refresh_tokens"
@@ -63,3 +62,4 @@ class RefreshToken(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+

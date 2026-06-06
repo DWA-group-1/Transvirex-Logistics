@@ -2,8 +2,7 @@ from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
-
-from .database import Base
+from transvirex_common.database import Base
 
 
 class Notification(Base):

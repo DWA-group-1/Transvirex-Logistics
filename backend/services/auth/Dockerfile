@@ -5,13 +5,21 @@ RUN pip install --no-cache-dir uv
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
     PATH="/opt/venv/bin:$PATH"
 
-WORKDIR /app
+WORKDIR /workspace
 
 COPY pyproject.toml uv.lock ./
 
-RUN uv sync --frozen --no-install-project
+COPY packages/common ./packages/common
 
-COPY app/ ./app/
+COPY services/auth/pyproject.toml ./services/auth/pyproject.toml
+
+COPY services/auth/app ./services/auth/app
+
+RUN uv sync --frozen --package auth
+
+COPY services/auth/app ./services/auth/app
+
+WORKDIR /workspace/services/auth
 
 EXPOSE 8000
 

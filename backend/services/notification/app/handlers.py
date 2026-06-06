@@ -2,9 +2,9 @@ import json
 import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from transvirex_common.events import EventBus
 
-from .database import SessionMaker
-from .events import EventBus
+from . import db
 from .manager import manager
 from .models import Notification
 
@@ -58,7 +58,7 @@ async def handle_delivery_assigned(enveloppe: dict) -> None:
             data.get("delivery_id"),
         )
         return
-    async with SessionMaker() as db:
+    async with db.SessionMaker() as db:
         await _persist_and_fanout(
             db,
             target_user_id=auth_user_id,

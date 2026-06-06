@@ -7,8 +7,7 @@ from sqlalchemy import Enum as SAEnum
 from sqlalchemy import Float, Integer, String, func
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
-
-from .database import Base
+from transvirex_common.database import Base
 
 
 class DeliveryStatus(str, enum.Enum):

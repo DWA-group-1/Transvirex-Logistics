@@ -1,24 +1,40 @@
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime,timezone
-
-from .database import get_db
-from .models import User, RefreshToken
-from .schemas import Token, UserCreate, UserOut, TokenPair, RefreshRequest, LoginResponse, ChangePasswordRequest
-from .security import (
+from transvirex_common.database import create_session_factory, get_db
+from transvirex_common.security import (
     create_access_token,
+    create_refresh_token,
     decode_access_token,
+    get_refresh_token_expiry,
     hash_password,
     verify_password,
-    create_refresh_token,
-    get_refresh_token_expiry,
 )
 
-app = FastAPI(title="Auth Service", version="1.0.0")
+from .config import settings
+from .models import RefreshToken, User
+from .schemas import (
+    ChangePasswordRequest,
+    LoginResponse,
+    RefreshRequest,
+    Token,
+    UserCreate,
+    UserOut,
+)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.state.db_session_maker = create_session_factory(settings.database_url)
+    yield
+
+
+app = FastAPI(title="Auth Service", version="1.0.0", lifespan=lifespan)
 
 # OAuth2 scheme — points to the token endpoint
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
@@ -95,7 +111,7 @@ async def register(
         email=user_data.email,
         hashed_password=hash_password(user_data.password),
         role=user_data.role,
-        must_change_password=user_data.must_change_password
+        must_change_password=user_data.must_change_password,
     )
     db.add(new_user)
     await db.commit()
@@ -126,11 +142,13 @@ async def login(
 
     # Create and store refresh token
     raw_refresh = create_refresh_token()
-    db.add(RefreshToken(
-        token=raw_refresh,
-        user_id=user.id,
-        expires_at=get_refresh_token_expiry(),
-    ))
+    db.add(
+        RefreshToken(
+            token=raw_refresh,
+            user_id=user.id,
+            expires_at=get_refresh_token_expiry(),
+        )
+    )
     await db.commit()
 
     return {
@@ -140,56 +158,55 @@ async def login(
         "must_change_password": user.must_change_password,
     }
 
+
 @app.post("/change-password", response_model=dict)
 async def change_password(
     request: ChangePasswordRequest,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Change user password. For first-time login, current_password is optional."""
-    
+
     # Validate passwords match
     if request.new_password != request.confirm_password:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Passwords do not match"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Passwords do not match"
         )
-    
+
     # Validate password strength
     if len(request.new_password) < 8:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password must be at least 8 characters"
+            detail="Password must be at least 8 characters",
         )
-    
+
     # For non-first-time changes, verify current password
     if not current_user.must_change_password:
         if not request.current_password:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Current password is required"
+                detail="Current password is required",
             )
-        
+
         if not verify_password(request.current_password, current_user.hashed_password):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Current password is incorrect"
+                detail="Current password is incorrect",
             )
-    
+
     # Update password and clear the must_change_password flag
     current_user.hashed_password = hash_password(request.new_password)
     current_user.must_change_password = False
     await db.commit()
-    
-    return {
-        "message": "Password changed successfully",
-        "must_change_password": False
-    }
+
+    return {"message": "Password changed successfully", "must_change_password": False}
+
 
 @app.get("/me", response_model=UserOut)
 async def get_me(current_user: User = Depends(get_current_user)):
     """Return the profile of the currently authenticated user."""
     return current_user
+
 
 @app.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(
@@ -211,11 +228,9 @@ async def delete_user(
 
     return None
 
+
 @app.post("/token/refresh", response_model=Token)
-async def refresh_token(
-    body: RefreshRequest,
-    db: AsyncSession = Depends(get_db)
-):
+async def refresh_token(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(RefreshToken).where(RefreshToken.token == body.refresh_token)
     )
@@ -239,11 +254,9 @@ async def refresh_token(
     )
     return {"access_token": new_access, "token_type": "bearer"}
 
+
 @app.post("/token/revoke", status_code=status.HTTP_204_NO_CONTENT)
-async def revoke_token(
-    body: RefreshRequest,
-    db: AsyncSession = Depends(get_db)
-):
+async def revoke_token(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(RefreshToken).where(RefreshToken.token == body.refresh_token)
     )

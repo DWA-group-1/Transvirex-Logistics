@@ -2,10 +2,11 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from transvirex_common.database import create_session_factory
+from transvirex_common.events import EventBus
 
 from . import clients
 from .config import settings
-from .events import EventBus
 from .routes import customers as customers_router
 from .routes import drivers as drivers_routers
 from .routes import hubs as hubs_router
@@ -17,6 +18,8 @@ logging.basicConfig(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    app.state.db_session_maker = create_session_factory(settings.database_url)
+
     bus = EventBus(settings.redis_url, producer_name="catalog")
     await bus.start()
     app.state.bus = bus

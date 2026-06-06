@@ -5,9 +5,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from transvirex_common.database import get_db
+from transvirex_common.deps import require_role
 
-from ..database import get_db
-from ..deps import require_role
 from ..models import Delivery, Incident, IncidentStatus
 from ..schemas import IncidentCreate, IncidentOut, IncidentResolve, IncidentWithDelivery
 

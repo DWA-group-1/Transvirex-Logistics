@@ -13,15 +13,16 @@ from fastapi import (
 )
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from transvirex_common.database import create_session_factory, get_db
+from transvirex_common.events import EventBus
+from transvirex_common.security import decode_access_token
 
+from . import db
 from .config import settings
-from .database import get_db
-from .events import EventBus
 from .handlers import register_event_handlers
 from .manager import manager
 from .models import Notification
 from .schemas import MarkReadRequest, NotificationCreate, NotificationOut
-from .security import decode_access_token
 
 logging.basicConfig(
     level=logging.INFO,
@@ -31,6 +32,9 @@ logging.basicConfig(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    maker = create_session_factory(settings.database_url)
+    app.state.db_session_maker = maker
+    db.set_session_maker(maker)
     bus = EventBus(settings.redis_url, producer_name="notification")
     register_event_handlers(bus)
     await bus.start()

@@ -1,7 +1,6 @@
 import asyncio
 import json
 import logging
-import os
 import socket
 import uuid
 from datetime import datetime, timezone
@@ -37,7 +36,7 @@ class EventBus:
         self._stopping = False
 
     async def publish(self, stream: str, event_type: str, data: dict) -> str:
-        enveloppe = {
+        envelope = {
             "event_id": str(uuid.uuid4()),
             "event_type": event_type,
             "occurred_at": datetime.now(timezone.utc).isoformat(),
@@ -45,7 +44,7 @@ class EventBus:
             "event_version": 1,
             "data": data,
         }
-        entry_id = await self._redis.xadd(stream, {"enveloppe": json.dumps(enveloppe)})
+        entry_id = await self._redis.xadd(stream, {"envelope": json.dumps(envelope)})
         logger.info(
             "event published",
             extra={"stream": stream, "event_type": event_type, "entry_id": entry_id},
@@ -127,17 +126,17 @@ class EventBus:
                     await self._dispatch(stream_name, entry_id, fields)
 
     async def _dispatch(self, stream: str, entry_id: str, fields: dict):
-        raw = fields.get("enveloppe")
+        raw = fields.get("envelope")
         if raw is None:
             logger.warning(
-                "malformed entry missing 'enveloppe' field, skipping",
+                "malformed entry missing 'envelope' field, skipping",
                 extra={"stream": stream, "entry_id": entry_id},
             )
             await self._redis.xack(stream, self._group, entry_id)
             return
 
         try:
-            enveloppe = json.loads(raw)
+            envelope = json.loads(raw)
         except json.JSONDecodeError:
             logger.warning(
                 "event handler failed",
@@ -152,14 +151,14 @@ class EventBus:
         all_ok = True
         for handler in self._handlers.get(stream, []):
             try:
-                await handler(enveloppe)
+                await handler(envelope)
             except Exception:
                 logger.exception(
                     "event handler failed",
                     extra={
                         "stream": stream,
                         "entry_id": entry_id,
-                        "event_type": enveloppe.get("event_type"),
+                        "event_type": envelope.get("event_type"),
                     },
                 )
                 all_ok = False
