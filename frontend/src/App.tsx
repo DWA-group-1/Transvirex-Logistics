@@ -9,7 +9,6 @@ import TrackInvoices from "./pages/TrackInvoices";
 import TrackOrders from "./pages/TrackOrders";
 import PlanRoutes from "./pages/PlanRoutes";
 import ProtectedRoute from "./components/ProtectedRoute";
-import LogisticsHub from "./pages/LogisticsHub";
 import Customers from "./pages/Customers.tsx";
 import Hubs from "./pages/Hubs.tsx";
 import Incidents from "./pages/Incidents.tsx";
@@ -49,10 +48,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         {/* Public */}
-        <Route
-          path="/"
-          element={<Login isDark={isDark} onToggleTheme={toggleTheme} />}
-        />
+        <Route path="/" element={<Login />} />
 
         <Route path="/change-password" element={<ChangePassword />} />
 
@@ -86,7 +82,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/logistics-hub" element={<LogisticsHub />} />
           <Route
             path="/register"
             element={
