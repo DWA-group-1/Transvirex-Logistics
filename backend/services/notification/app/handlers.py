@@ -58,9 +58,9 @@ async def handle_delivery_assigned(enveloppe: dict) -> None:
             data.get("delivery_id"),
         )
         return
-    async with db.SessionMaker() as db:
+    async with db.SessionMaker() as session:
         await _persist_and_fanout(
-            db,
+            session,
             target_user_id=auth_user_id,
             target_role=None,
             type_="new_mission",
@@ -72,9 +72,9 @@ async def handle_delivery_assigned(enveloppe: dict) -> None:
 
 async def handle_incident_declared(enveloppe: dict) -> None:
     data = enveloppe["data"]
-    async with SessionMaker() as db:
+    async with db.SessionMaker() as session:
         await _persist_and_fanout(
-            db,
+            session,
             target_user_id=None,
             target_role="dispatcher",
             type_="incident_declared",

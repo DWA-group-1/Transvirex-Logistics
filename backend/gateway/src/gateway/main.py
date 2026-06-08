@@ -65,6 +65,8 @@ HOP_BY_HOP = {
 
 PUBLIC_PREFIXES = {"auth/token", "auth/token/refresh", "auth/token/revoke"}
 
+IDENTITY_HEADERS = {"x-user-id", "x-user-role", "x-user-email"}
+
 
 def _ws_target_url(prefix: str, path: str, query: str) -> str:
     base = SERVICES[prefix].replace("http://", "ws://").replace("https://", "wss://")
@@ -99,7 +101,11 @@ async def _pump(client: WebSocket, upstream) -> None:
 
 
 def filter_headers(headers):
-    return {k: v for k, v in headers.items() if k.lower() not in HOP_BY_HOP}
+    return {
+        k: v
+        for k, v in headers.items()
+        if k.lower() not in HOP_BY_HOP and k.lower() not in IDENTITY_HEADERS
+    }
 
 
 @app.get("/health")

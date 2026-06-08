@@ -168,8 +168,7 @@ async def mark_as_read(
 @app.websocket("/ws/notifications")
 async def ws_notifications(
     websocket: WebSocket,
-    token: str = Query(...),  # ws://host/ws/notifications?token=<jwt>
-    db: AsyncSession = Depends(get_db),
+    token: str = Query(...),
 ):
     payload = decode_access_token(token)
     if not payload:
@@ -180,40 +179,40 @@ async def ws_notifications(
     role: str = payload["role"]
 
     await manager.connect(websocket, user_id, role)
-
-    # Envoie les notifs non lues stockées en DB
-    result = await db.execute(
-        select(Notification)
-        .where(
-            and_(
-                Notification.is_read == False,
-                or_(
-                    Notification.target_user_id == user_id,
-                    Notification.target_role == role,
-                ),
-            )
-        )
-        .order_by(Notification.created_at.asc())
-    )
-    pending = result.scalars().all()
-
-    for notif in pending:
-        await websocket.send_json(
-            {
-                "id": notif.id,
-                "type": notif.type,
-                "title": notif.title,
-                "message": notif.message,
-                "payload": notif.payload,
-                "created_at": notif.created_at.isoformat(),
-            }
-        )
-
-    # Boucle de maintien de connexion (le client peut envoyer un ping)
     try:
+        async with db.SessionMaker() as session:
+            result = await session.execute(
+                select(Notification)
+                .where(
+                    and_(
+                        Notification.is_read == False,
+                        or_(
+                            Notification.target_user_id == user_id,
+                            Notification.target_role == role,
+                        ),
+                    )
+                )
+                .order_by(Notification.created_at.asc())
+            )
+            pending = result.scalars().all()
+
+        for notif in pending:
+            await websocket.send_json(
+                {
+                    "id": notif.id,
+                    "type": notif.type,
+                    "title": notif.title,
+                    "message": notif.message,
+                    "payload": notif.payload,
+                    "created_at": notif.created_at.isoformat(),
+                }
+            )
+
         while True:
             data = await websocket.receive_text()
             if data == "ping":
                 await websocket.send_text("pong")
     except WebSocketDisconnect:
+        pass
+    finally:
         manager.disconnect(websocket, user_id, role)
