@@ -8,16 +8,14 @@ ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
 WORKDIR /workspace
 
 COPY pyproject.toml uv.lock ./
-
 COPY packages/common ./packages/common
+COPY services/reporting/pyproject.toml ./services/reporting/pyproject.toml
 
-COPY services/delivery/pyproject.toml ./services/delivery/pyproject.toml
+RUN uv sync --frozen --package reporting
 
-RUN uv sync --frozen --package delivery
+COPY services/reporting/app ./services/reporting/app
 
-COPY services/delivery/app ./services/delivery/app
-
-WORKDIR /workspace/services/delivery
+WORKDIR /workspace/services/reporting
 
 EXPOSE 8000
 

@@ -52,7 +52,11 @@ SERVICES = {
     "notification": settings.notif_url,
     "catalog": settings.catalog_url,
     "delivery": settings.delivery_url,
+<<<<<<< HEAD
     "billing": settings.billing_url,
+=======
+    "reporting": settings.reporting_url,
+>>>>>>> cf07dd9 (feat(reporting): scaffold service + infrastructure wiring)
 }
 
 HOP_BY_HOP = {
