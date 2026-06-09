@@ -59,7 +59,7 @@ const allNavItems = [
     label: "AI Agent",
     icon: "bi-robot",
     path: "/ai-agent",
-    roles: ["manager"],
+    roles: ["driver", "dispatcher", "billing", "manager"],
   },
 ];
 
