@@ -1,5 +1,4 @@
 services:
-  # ─── Gateway ────────────────────────────────────────────────────────────────────────
   gateway:
     build: ./backend/gateway
     container_name: transvirex-gateway
@@ -8,6 +7,7 @@ services:
       GATEWAY_NOTIF_URL: http://notification:8000
       GATEWAY_CATALOG_URL: http://catalog:8000
       GATEWAY_DELIVERY_URL: http://delivery:8000
+      GATEWAY_BILLING_URL: http://billing:8000
       GATEWAY_JWT_ALGORITHM: ${JWT_ALGORITHM}
       GATEWAY_CORS_ORIGINS: '["http://localhost:5173","http://localhost:4173"]'
     ports:
@@ -23,8 +23,9 @@ services:
         condition: service_healthy
       delivery:
         condition: service_healthy
+      billing:
+        condition: service_healthy
 
-  # ─── Redis ──────────────────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: transvirex-redis
@@ -37,7 +38,6 @@ services:
       timeout: 3s
       retries: 5
 
-  # ─── PostgreSQL - AuthDB ────────────────────────────────────────────────────────────
   auth_db:
     image: postgres:17-alpine
     container_name: transvirex-auth-db
@@ -53,7 +53,6 @@ services:
       timeout: 3s
       retries: 5
 
-  # ─── Auth Service ──────────────────────────────────────────────────────────
   auth:
     build:
       context: ./backend
@@ -99,7 +98,6 @@ services:
         /workspace/packages/common/src,
       ]
 
-  # ─── PostgreSQL - NotificationDB ──────────────────────────────────────────
   notification_db:
     image: postgres:17-alpine
     container_name: transvirex-notif-db
@@ -115,7 +113,6 @@ services:
       timeout: 3s
       retries: 5
 
-  # ─── Notification Service ─────────────────────────────────────────────────
   notification:
     build:
       context: ./backend
@@ -163,7 +160,6 @@ services:
         "app",
       ]
 
-  # ─── PostgreSQL - CatalogDB ──────────────────────────────────────────
   catalog_db:
     image: postgres:17-alpine
     container_name: transvirex-catalog-db
@@ -179,7 +175,6 @@ services:
       timeout: 3s
       retries: 5
 
-  # ─── Catalog Service ─────────────────────────────────────────────────
   catalog:
     build:
       context: ./backend
@@ -226,7 +221,6 @@ services:
         "app",
       ]
 
-  # ─── PostgreSQL - DeliveryDB ─────────────────────────────────────────────────
   delivery_db:
     image: postgres:17-alpine
     container_name: transvirex-delivery-db
@@ -243,7 +237,6 @@ services:
       timeout: 3s
       retries: 5
 
-  # ─── Delivery Service ─────────────────────────────────────────────────
   delivery:
     build:
       context: ./backend
@@ -311,6 +304,49 @@ services:
       - "host.docker.internal:host-gateway"
 
   # ─── Frontend ──────────────────────────────────────────────────────────────
+  billing_db:
+    image: postgres:17-alpine
+    container_name: transvirex-billing-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${BILLING_DB_USER}
+      POSTGRES_PASSWORD: ${BILLING_DB_PASSWORD}
+      POSTGRES_DB: billing
+    volumes:
+      - billing_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${BILLING_DB_USER} -d billing"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  billing:
+    build:
+      context: ./backend
+      dockerfile: services/billing/Dockerfile
+    container_name: transvirex-billing
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://${BILLING_DB_USER}:${BILLING_DB_PASSWORD}@billing_db:5432/billing
+      REDIS_URL: "redis://redis:6379"
+    depends_on:
+      billing_db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health', timeout=2).status == 200 else 1)",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+
   frontend:
     profiles: ["prod"]
     build:
@@ -340,3 +376,4 @@ volumes:
   notif_pgdata:
   catalog_pgdata:
   delivery_pgdata:
+  billing_pgdata:
