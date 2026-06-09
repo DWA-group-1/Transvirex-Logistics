@@ -328,15 +328,24 @@ async def _transition(
     location: str | None = None,
 ) -> Delivery:
     delivery = await _get_or_404(db, delivery_id)
+
     if delivery.status != expected_from:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             f"Cannot move from '{delivery.status.value}' to '{to.value}'",
         )
+
     await ensure_driver_owns(delivery, role, x_user_id, catalog, headers)
 
     delivery.status = to
-    await _write_tracking(db, delivery.id, to.value, location=location)
+
+    await _write_tracking(
+        db,
+        delivery.id,
+        to.value,
+        location=location,
+    )
+
     await db.commit()
     await db.refresh(delivery)
 
@@ -345,13 +354,24 @@ async def _transition(
         event_type,
         {
             "delivery_id": str(delivery.id),
+            "customer_id": str(delivery.customer_id),
             "driver_id": (
                 str(delivery.assigned_driver_id)
                 if delivery.assigned_driver_id
                 else None
             ),
+            "completed_at": (
+                delivery.updated_at.isoformat()
+                if delivery.updated_at
+                else None
+            ),
+            "service_type": delivery.service_type,
+            "priority": delivery.priority,
+            "weight_kg": delivery.weight_kg,
+            "parcel_count": delivery.parcel_count,
         },
     )
+
     return delivery
 
 

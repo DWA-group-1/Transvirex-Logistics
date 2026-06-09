@@ -1,4 +1,5 @@
 from functools import cached_property
+import http
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -16,6 +17,7 @@ class Settings(BaseSettings):
     notif_url: str = "http://notification:8000"
     catalog_url: str = "http://catalog:8000"
     delivery_url: str = "http://delivery:8000"
+    billing_url: str ="http://billing:8000"
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:4173"]
     jwt_algorithm: str = "RS256"
 
