@@ -60,6 +60,8 @@ class Hub(Base):
     code: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
     address: Mapped[str] = mapped_column(String, nullable=False)
+    city: Mapped[str | None] = mapped_column(String, nullable=True)
+    zip_code: Mapped[str | None] = mapped_column(String, nullable=True)
     capacity: Mapped[int | None] = mapped_column(nullable=True)
     is_active: Mapped[bool] = mapped_column(
         Boolean,
