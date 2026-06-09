@@ -148,7 +148,7 @@ services:
       retries: 5
       start_period: 30s
     volumes:
-      - ./backend/services/notification/:/app:Z
+      - ./backend/services/notification/:/workspace/services/notification:Z
       - ./keys:/run/secrets/keys:ro,z
     command:
       [
@@ -212,7 +212,7 @@ services:
       retries: 5
       start_period: 30s
     volumes:
-      - ./backend/services/catalog/:/app:Z
+      - ./backend/services/catalog/:/workspace/services/catalog:Z
     command:
       [
         "uvicorn",
@@ -273,7 +273,7 @@ services:
       retries: 5
       start_period: 30s
     volumes:
-      - ./backend/services/delivery/:/app:Z
+      - ./backend/services/delivery/:/workspace/services/delivery:Z
     command:
       [
         uvicorn,
