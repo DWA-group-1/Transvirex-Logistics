@@ -150,7 +150,8 @@ export const getValidToken = async (): Promise<string | null> => {
 
   try {
     const payload = decodeTokenPayload();
-    const isExpiredOrSoon = !payload?.exp || payload.exp * 1000 < Date.now() + 10_000;
+    const isExpiredOrSoon =
+      !payload?.exp || payload.exp * 1000 < Date.now() + 10_000;
     if (isExpiredOrSoon) {
       return await refreshAccessToken();
     }
@@ -494,3 +495,25 @@ export const createDriver = async (payload: {
   last_name: string;
   phone?: string | null;
 }): Promise<DriverRef> => apiCall("/catalog/drivers", "POST", payload);
+
+export interface KpiValues {
+  period_month: string;
+  total_deliveries: number;
+  on_time_pct: number | null;
+  avg_delivery_time_h: number | null;
+  customer_satisfaction: number | null;
+  revenue: number;
+  active_drivers: number;
+  incidents_count: number;
+  source: string; // "live" | "computed" | "seeded"
+}
+
+export interface KpiTrend {
+  months: KpiValues[];
+}
+
+export const getCurrentKpis = (): Promise<KpiValues> =>
+  apiCall("/reporting/kpi/current");
+
+export const getKpiTrend = (months = 12): Promise<KpiTrend> =>
+  apiCall(`/reporting/kpi/trend?months=${months}`);
