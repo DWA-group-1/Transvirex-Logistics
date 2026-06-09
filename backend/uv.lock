@@ -26,6 +26,7 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "pyjwt", extra = ["crypto"] },
     { name = "python-dotenv" },
+    { name = "transvirex-common" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -42,6 +43,7 @@ requires-dist = [
     { name = "pydantic-settings", specifier = ">=2.14.1" },
     { name = "pyjwt", extras = ["crypto"], specifier = ">=2.10.0" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
+    { name = "transvirex-common", editable = "packages/common" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.46.0" },
 ]
 

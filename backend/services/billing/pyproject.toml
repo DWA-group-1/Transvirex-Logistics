@@ -11,7 +11,7 @@ dependencies = [
     "alembic>=1.13.0",
     "pydantic-settings>=2.6.0",
     "redis>=5.0.0",
-    "transvirex-common @ file:///common",
+    "transvirex_common",
 ]
 
 [build-system]
