@@ -27,9 +27,7 @@ logging.basicConfig(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.http_client = httpx.AsyncClient(
-        timeout=httpx.Timeout(30.0, connect=5.0)
-    )
+    app.state.http_client = httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=5.0))
     yield
     await app.state.http_client.aclose()
 
@@ -52,11 +50,8 @@ SERVICES = {
     "notification": settings.notif_url,
     "catalog": settings.catalog_url,
     "delivery": settings.delivery_url,
-<<<<<<< HEAD
     "billing": settings.billing_url,
-=======
     "reporting": settings.reporting_url,
->>>>>>> cf07dd9 (feat(reporting): scaffold service + infrastructure wiring)
 }
 
 HOP_BY_HOP = {
@@ -99,11 +94,7 @@ def is_public_route(prefix: str, path: str) -> bool:
 
 
 def _ws_target_url(prefix: str, path: str, query: str) -> str:
-    base = (
-        SERVICES[prefix]
-        .replace("http://", "ws://")
-        .replace("https://", "wss://")
-    )
+    base = SERVICES[prefix].replace("http://", "ws://").replace("https://", "wss://")
 
     url = f"{base}/{path}"
 
@@ -144,8 +135,7 @@ def filter_headers(headers):
     return {
         k: v
         for k, v in headers.items()
-        if k.lower() not in HOP_BY_HOP
-        and k.lower() not in IDENTITY_HEADERS
+        if k.lower() not in HOP_BY_HOP and k.lower() not in IDENTITY_HEADERS
     }
 
 
@@ -169,9 +159,7 @@ async def proxy(prefix: str, path: str, request: Request):
     client = request.app.state.http_client
 
     if not is_public_route(prefix, path):
-        token = extract_token(
-            request.headers.get("Authorization")
-        )
+        token = extract_token(request.headers.get("Authorization"))
         claims = verify_jwt(token)
 
     target_url = f"{SERVICES[prefix]}/{path}"
@@ -211,9 +199,7 @@ async def proxy(prefix: str, path: str, request: Request):
             detail=f"Upstream error: {type(e).__name__}",
         )
 
-    response_headers = filter_headers(
-        upstream_response.headers
-    )
+    response_headers = filter_headers(upstream_response.headers)
 
     return Response(
         content=upstream_response.content,
@@ -250,3 +236,4 @@ async def proxy_ws(
 
         if websocket.client_state != WebSocketState.DISCONNECTED:
             await websocket.close(code=1011)
+
