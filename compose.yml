@@ -319,11 +319,11 @@ services:
           "python",
           "-c",
           "import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health', timeout=2).status == 200 else 1)",
-      ]
-    interval: 5s
-    timeout: 3s
-    retries: 5
-    start_period: 30s
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
     volumes:
       - ./backend/services/reporting/:/workspace/services/reporting:Z
     command:
@@ -339,8 +339,7 @@ services:
         /workspace/services/reporting/app,
         --reload-dir,
         /workspace/packages/common/src,
-    ]
-      - "host.docker.internal:host-gateway"
+      ]
 
   # ─── Billing ──────────────────────────────────────────────────────────────
   billing_db:
@@ -385,6 +384,22 @@ services:
       timeout: 3s
       retries: 5
       start_period: 30s
+    volumes:
+      - ./backend/services/billing/:/workspace/services/billing:Z
+    command:
+      [
+        uvicorn,
+        app.main:app,
+        --host,
+        0.0.0.0,
+        --port,
+        "8000",
+        --reload,
+        --reload-dir,
+        /workspace/services/billing/app,
+        --reload-dir,
+        /workspace/packages/common/src,
+      ]
 
   # ─── Agent Service ─────────────────────────────────────────────────
   agent:

@@ -246,7 +246,7 @@ psql-delivery:
 psql-reporting:
 	$(COMPOSE) exec reporting_db sh -c 'psql -U $$POSTGRES_USER -d $$POSTGRES_DB'
 
-migrate: migrate-auth migrate-notif migrate-catalog migrate-delivery migrate-reporting
+migrate: migrate-auth migrate-notif migrate-catalog migrate-delivery migrate-billing migrate-reporting
 
 migrate-auth:
 	$(COMPOSE) exec auth alembic upgrade head
@@ -259,6 +259,9 @@ migrate-catalog:
 
 migrate-delivery:
 	$(COMPOSE) exec delivery alembic upgrade head
+
+migrate-billing:
+	$(COMPOSE) exec billing alembic upgrade head
 
 migrate-reporting:
 	$(COMPOSE) exec reporting alembic upgrade head
