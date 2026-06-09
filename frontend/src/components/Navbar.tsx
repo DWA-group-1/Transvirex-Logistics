@@ -56,6 +56,12 @@ const allNavItems = [
     roles: ["manager", "dispatcher"],
   },
   {
+    label: "Reports",
+    icon: "bi-bar-chart-line",
+    path: "/reports",
+    roles: ["manager", "dispatcher"],
+  },
+  {
     label: "AI Agent",
     icon: "bi-robot",
     path: "/ai-agent",

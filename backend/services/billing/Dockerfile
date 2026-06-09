@@ -2,15 +2,23 @@ FROM python:3.13-slim
 
 RUN pip install --no-cache-dir uv
 
-WORKDIR /app
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
+    PATH="/opt/venv/bin:$PATH"
 
-COPY packages/common /common
+WORKDIR /workspace
 
-COPY services/billing/pyproject.toml services/billing/uv.lock* ./
-RUN uv sync --no-install-project
+COPY pyproject.toml uv.lock ./
 
-COPY services/billing/app ./app
-COPY services/billing/migrations ./migrations
-COPY services/billing/alembic.ini ./
+COPY packages/common ./packages/common
 
-CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+COPY services/billing/pyproject.toml ./services/billing/pyproject.toml
+
+RUN uv sync --frozen --package billing
+
+COPY services/billing/app ./services/billing/app
+
+WORKDIR /workspace/services/billing
+
+EXPOSE 8000
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

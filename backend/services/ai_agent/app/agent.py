@@ -9,7 +9,9 @@ from .config import settings
 from .schemas import ChatMessage
 from .tools import TOOLS
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 _TOOL_CALL_RE = re.compile(
@@ -41,13 +43,10 @@ ROLE_CONTEXT = {
 def _build_system_prompt(role: str, user_id: str) -> str:
     role_ctx = ROLE_CONTEXT.get(role, "You are a logistics assistant.")
     available_tools = {
-        name: meta
-        for name, meta in TOOLS.items()
-        if role in meta["allowed_roles"]
+        name: meta for name, meta in TOOLS.items() if role in meta["allowed_roles"]
     }
     tool_lines = "\n".join(
-        f"- {name}: {meta['description']}"
-        for name, meta in available_tools.items()
+        f"- {name}: {meta['description']}" for name, meta in available_tools.items()
     )
     return f"""{role_ctx}
 
@@ -78,7 +77,9 @@ async def _ollama_chat(messages: list[dict], stream: bool = False):
     logger.info("[ollama] sending %d messages, stream=%s", len(messages), stream)
     async with httpx.AsyncClient(timeout=60) as client:
         if stream:
-            async with client.stream("POST", f"{settings.ollama_url}/api/chat", json=payload) as resp:
+            async with client.stream(
+                "POST", f"{settings.ollama_url}/api/chat", json=payload
+            ) as resp:
                 resp.raise_for_status()
                 async for line in resp.aiter_lines():
                     if line.strip():
@@ -96,7 +97,9 @@ async def run_agent(
     user_id: str,
     jwt: str,
 ) -> AsyncGenerator[str, None]:
-    logger.info("[agent] START role=%s user_id=%s message=%r", role, user_id, user_message)
+    logger.info(
+        "[agent] START role=%s user_id=%s message=%r", role, user_id, user_message
+    )
 
     system_prompt = _build_system_prompt(role, user_id)
     messages: list[dict] = [{"role": "system", "content": system_prompt}]
@@ -105,19 +108,30 @@ async def run_agent(
     messages.append({"role": "user", "content": user_message})
 
     for iteration in range(settings.max_tool_iterations):
-        logger.info("[agent] iteration %d/%d", iteration + 1, settings.max_tool_iterations)
+        logger.info(
+            "[agent] iteration %d/%d", iteration + 1, settings.max_tool_iterations
+        )
 
         full_response = ""
-        async for chunk in _ollama_chat(messages, stream=False):
-            full_response = chunk
-
+        try:
+            async for chunk in _ollama_chat(messages, stream=False):
+                full_response = chunk
+        except httpx.HTTPError as e:
+            logger.error("[agent] ollama unreachable: %s", e)
+            yield f"data: {json.dumps({'token': '[the assistant is unavailable right now]'})}\n\n"
+            yield "data: [DONE]\n\n"
+            return
         logger.info("[ollama] raw response: %r", full_response[:300])
 
         try:
             data = json.loads(full_response)
             assistant_text: str = data["message"]["content"]
         except Exception as e:
-            logger.error("[agent] Failed to parse Ollama response: %s — raw: %r", e, full_response[:300])
+            logger.error(
+                "[agent] Failed to parse Ollama response: %s — raw: %r",
+                e,
+                full_response[:300],
+            )
             yield "data: [ERROR] Failed to parse Ollama response\n\n"
             yield "data: [DONE]\n\n"
             return
@@ -152,7 +166,9 @@ async def run_agent(
             observation = f"Error: unknown tool '{tool_name}'."
             logger.warning("[agent] unknown tool: %s", tool_name)
         elif role not in tool_meta["allowed_roles"]:
-            observation = f"Error: tool '{tool_name}' is not available for role '{role}'."
+            observation = (
+                f"Error: tool '{tool_name}' is not available for role '{role}'."
+            )
             logger.warning("[agent] role %s not allowed for tool %s", role, tool_name)
         else:
             try:
@@ -161,7 +177,9 @@ async def run_agent(
                 observation = json.dumps(result, default=str, ensure_ascii=False)
                 logger.info("[agent] tool result: %r", observation[:400])
             except httpx.HTTPStatusError as exc:
-                observation = f"API error {exc.response.status_code}: {exc.response.text}"
+                observation = (
+                    f"API error {exc.response.status_code}: {exc.response.text}"
+                )
                 logger.error("[agent] tool HTTP error: %s", observation)
             except Exception as exc:
                 observation = f"Tool error: {str(exc)}"
@@ -171,13 +189,15 @@ async def run_agent(
 
     # Max iterations reached
     logger.warning("[agent] max iterations reached, asking model to summarise")
-    messages.append({
-        "role": "user",
-        "content": (
-            "You have reached the maximum number of tool calls. "
-            "Please summarise what you found so far and answer the user's question."
-        ),
-    })
+    messages.append(
+        {
+            "role": "user",
+            "content": (
+                "You have reached the maximum number of tool calls. "
+                "Please summarise what you found so far and answer the user's question."
+            ),
+        }
+    )
     async for line in _ollama_chat(messages, stream=True):
         try:
             chunk_data = json.loads(line)
@@ -189,3 +209,4 @@ async def run_agent(
         except Exception:
             continue
     yield "data: [DONE]\n\n"
+

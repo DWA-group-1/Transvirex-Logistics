@@ -13,7 +13,7 @@ COPY packages/common ./packages/common
 
 COPY services/catalog/pyproject.toml ./services/catalog/pyproject.toml
 
-RUN uv sync --frozen --package auth
+RUN uv sync --frozen --package catalog
 
 COPY services/catalog/app ./services/catalog/app
 

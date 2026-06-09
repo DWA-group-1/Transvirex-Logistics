@@ -10,7 +10,7 @@ dependencies = [
     "pydantic>=2.13.4",
     "pydantic-settings>=2.14.1",
     "python-dotenv>=1.2.2",
-    "pyjwt[crypto]>=2.10.0",
+    "transvirex_common",
 ]
 
 [dependency-groups]

@@ -13,8 +13,6 @@ COPY packages/common ./packages/common
 
 COPY services/delivery/pyproject.toml ./services/delivery/pyproject.toml
 
-COPY services/delivery/app ./services/delivery/app
-
 RUN uv sync --frozen --package delivery
 
 COPY services/delivery/app ./services/delivery/app

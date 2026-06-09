@@ -8,20 +8,15 @@ ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
 WORKDIR /workspace
 
 COPY pyproject.toml uv.lock ./
-
 COPY packages/common ./packages/common
+COPY services/reporting/pyproject.toml ./services/reporting/pyproject.toml
 
-COPY services/ai_agent/pyproject.toml ./services/ai_agent/pyproject.toml
+RUN uv sync --frozen --package reporting
 
-COPY services/ai_agent/app ./services/ai_agent/app
+COPY services/reporting/app ./services/reporting/app
 
-RUN uv sync --frozen --package ai_agent
-
-COPY services/ai_agent/app ./services/ai_agent/app
-
-WORKDIR /workspace/services/ai_agent
+WORKDIR /workspace/services/reporting
 
 EXPOSE 8000
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
-
