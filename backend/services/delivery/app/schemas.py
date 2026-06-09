@@ -25,6 +25,7 @@ class DeliveryOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    reference: str
     hub_id: UUID
     customer_id: UUID
     assigned_driver_id: UUID | None
