@@ -10,7 +10,7 @@ from transvirex_common.database import get_db
 from transvirex_common.deps import get_authorization_header, require_role
 
 from ..clients import AuthClient, get_auth_client
-from ..models import Driver
+from ..models import Driver, Hub
 from ..schemas import DriverCreate, DriverList, DriverOut, DriverUpdate
 
 logger = logging.getLogger(__name__)
@@ -22,6 +22,7 @@ async def list_drivers(
     db: Annotated[AsyncSession, Depends(get_db)],
     _: Annotated[str, Depends(require_role("manager", "dispatcher", "driver"))],
     is_active: bool | None = Query(None),
+    hub_id: UUID | None = None,
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
@@ -31,6 +32,9 @@ async def list_drivers(
     if is_active is not None:
         query = query.where(Driver.is_active == is_active)
         count_query = count_query.where(Driver.is_active == is_active)
+    if hub_id is not None:
+        query = query.where(Driver.hub_id == hub_id)
+        count_query = count_query.where(Driver.hub_id == hub_id)
 
     query = (
         query.order_by(Driver.last_name, Driver.first_name).limit(limit).offset(offset)
@@ -116,6 +120,11 @@ async def create_driver(
             status.HTTP_502_BAD_GATEWAY, "Failed to create user account"
         )
 
+    if payload.hub_id is not None:
+        hub = await db.get(Hub, payload.hub_id)
+        if hub is None:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unknown hub_id")
+
     try:
         driver = Driver(
             auth_user_id=auth_user_id,
@@ -123,6 +132,7 @@ async def create_driver(
             first_name=payload.first_name,
             last_name=payload.last_name,
             phone=payload.phone,
+            hub_id=payload.hub_id,
         )
         db.add(driver)
         await db.commit()
@@ -154,6 +164,7 @@ async def create_driver(
             "email": driver.email,
             "first_name": driver.first_name,
             "last_name": driver.last_name,
+            "hub_id": str(driver.hub_id) if driver.hub_id else None,
         },
     )
     return driver

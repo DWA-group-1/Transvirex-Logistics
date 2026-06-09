@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, DateTime, String, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from transvirex_common.database import Base
@@ -25,6 +25,12 @@ class Driver(Base):
     first_name: Mapped[str] = mapped_column(String, nullable=False)
     last_name: Mapped[str] = mapped_column(String, nullable=False, index=True)
     phone: Mapped[str | None] = mapped_column(String, nullable=True)
+    hub_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("hubs.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     is_active: Mapped[bool] = mapped_column(
         Boolean,
         server_default="true",
