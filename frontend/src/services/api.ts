@@ -144,8 +144,24 @@ export const getCurrentRole = (): UserOut["role"] | null => {
   return (payload?.role as UserOut["role"]) ?? null;
 };
 
-export const isAuthenticated = (): boolean => {
+export const getValidToken = async (): Promise<string | null> => {
   const token = getAuthToken();
+  if (!token) return null;
+
+  try {
+    const payload = decodeTokenPayload();
+    const isExpiredOrSoon = !payload?.exp || payload.exp * 1000 < Date.now() + 10_000;
+    if (isExpiredOrSoon) {
+      return await refreshAccessToken();
+    }
+    return token;
+  } catch {
+    return null;
+  }
+};
+
+export const isAuthenticated = async (): Promise<boolean> => {
+  const token = await getValidToken();
   if (!token) return false;
 
   try {

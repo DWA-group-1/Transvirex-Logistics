@@ -55,6 +55,12 @@ const allNavItems = [
     path: "/incidents",
     roles: ["manager", "dispatcher"],
   },
+  {
+    label: "AI Agent",
+    icon: "bi-robot",
+    path: "/ai-agent",
+    roles: ["driver", "dispatcher", "billing", "manager"],
+  },
 ];
 
 interface NavbarProps {

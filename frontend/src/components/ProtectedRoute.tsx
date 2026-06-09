@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { isAuthenticated, getCurrentRole } from "../services/api";
 
@@ -9,12 +10,16 @@ interface Props {
 }
 
 export default function ProtectedRoute({ children, allowedRoles }: Props) {
-  if (!isAuthenticated()) {
-    return <Navigate to="/" replace />;
-  }
+  const [auth, setAuth] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    isAuthenticated().then(setAuth);
+  }, []);
+
+  if (auth === null) return null; // loading
+  if (!auth) return <Navigate to="/" replace />;
 
   const role = getCurrentRole();
-
   if (allowedRoles && role && !allowedRoles.includes(role)) {
     return <Navigate to="/home" replace />;
   }

@@ -12,6 +12,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Customers from "./pages/Customers.tsx";
 import Hubs from "./pages/Hubs.tsx";
 import Incidents from "./pages/Incidents.tsx";
+import AiAgent from "./pages/AiAgent.tsx";
 
 import "./App.css";
 
@@ -58,6 +59,7 @@ function App() {
           }
         >
           <Route path="/home" element={<Home />} />
+          <Route path="/ai-agent" element={<AiAgent />} />
           <Route
             path="/track-orders"
             element={
