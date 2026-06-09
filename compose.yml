@@ -66,6 +66,8 @@ services:
     depends_on:
       auth_db:
         condition: service_healthy
+    ports:
+      - "8001:8000"
     healthcheck:
       test:
         [
@@ -124,6 +126,8 @@ services:
       DATABASE_URL: postgresql+psycopg://${NOTIF_DB_USER}:${NOTIF_DB_PASSWORD}@notification_db:5432/notifications
       JWT_ALGORITHM: ${JWT_ALGORITHM}
       REDIS_URL: "redis://redis:6379"
+    ports:
+      - "8002:8000"
     depends_on:
       notification_db:
         condition: service_healthy
