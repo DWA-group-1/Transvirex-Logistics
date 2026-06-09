@@ -45,8 +45,14 @@ export default function Hubs() {
   }
 
   async function handleSubmit() {
-    if (!form.code.trim() || !form.name.trim() || !form.address.trim()) {
-      setFormError("Code, name and address are required.");
+    if (
+      !form.code.trim() ||
+      !form.name.trim() ||
+      !form.address.trim() ||
+      !form.city.trim() ||
+      !form.zip_code.trim()
+    ) {
+      setFormError("Code, name and the full address are required.");
       return;
     }
     setSubmitting(true);
@@ -308,13 +314,13 @@ export default function Hubs() {
             style={themedInput}
             value={form.address}
             onChange={(e) => setForm({ ...form, address: e.target.value })}
-            placeholder="12 rue de la Logistique, 75018 Paris"
+            placeholder="12 Rue Logistique"
           />
         </Labeled>
 
         <Labeled label="City *">
           <input
-            style={inputStyle}
+            style={themedInput}
             value={form.city}
             onChange={(e) => setForm({ ...form, city: e.target.value })}
             placeholder="Paris"
@@ -323,7 +329,7 @@ export default function Hubs() {
 
         <Labeled label="Zip code *">
           <input
-            style={inputStyle}
+            style={themedInput}
             value={form.zip_code}
             onChange={(e) => setForm({ ...form, zip_code: e.target.value })}
             placeholder="75018"

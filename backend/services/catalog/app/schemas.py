@@ -56,7 +56,7 @@ class HubUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
     address: str = Field(min_length=1)
     city: str = Field(min_length=1, max_length=100)
-    zip_code: str | None = Field(default=None, min_length=1, max_length=20)
+    zip_code: str = Field(min_length=1, max_length=20)
     capacity: int | None = Field(default=None, ge=0)
 
 

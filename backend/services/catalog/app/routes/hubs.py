@@ -91,6 +91,8 @@ async def create_hub(
         code=payload.code,
         name=payload.name,
         address=payload.address,
+        city=payload.city,
+        zip_code=payload.zip_code,
         capacity=payload.capacity,
     )
     db.add(hub)
