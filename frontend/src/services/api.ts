@@ -29,6 +29,8 @@ export interface HubRef {
   code: string;
   name: string;
   address: string;
+  city: string;
+  zip_code: string;
   capacity: number | null;
   is_active: boolean;
 }
@@ -466,6 +468,8 @@ export const createHub = async (payload: {
   code: string;
   name: string;
   address: string;
+  city: string;
+  zip_code: string;
   capacity?: number | null;
 }): Promise<HubRef> => apiCall("/catalog/hubs", "POST", payload);
 

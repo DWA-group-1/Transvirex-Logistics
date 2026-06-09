@@ -217,6 +217,8 @@ export default function CreateOrderModal({
                     ...f,
                     hub_id: e.target.value,
                     pickup_address: hub ? hub.address : f.pickup_address,
+                    city: hub?.city ?? f.city,
+                    zip_code: hub?.zip_code ?? f.zip_code,
                   }));
                 }}
                 style={selectStyle}

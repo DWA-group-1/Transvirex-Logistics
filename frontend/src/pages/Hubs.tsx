@@ -3,7 +3,14 @@ import { getHubs, createHub, type HubRef } from "../services/api";
 import FormModal from "../components/FormModal";
 import { Labeled, inputStyle, newButton } from "../components/FormBits";
 
-const EMPTY = { code: "", name: "", address: "", capacity: "" };
+const EMPTY = {
+  code: "",
+  name: "",
+  address: "",
+  city: "",
+  zip_code: "",
+  capacity: "",
+};
 
 export default function Hubs() {
   const [hubs, setHubs] = useState<HubRef[]>([]);
@@ -49,6 +56,8 @@ export default function Hubs() {
         code: form.code.trim(),
         name: form.name.trim(),
         address: form.address.trim(),
+        city: form.city.trim(),
+        zip_code: form.zip_code.trim(),
         capacity: form.capacity === "" ? null : Number(form.capacity),
       });
       setOpen(false);
@@ -300,6 +309,24 @@ export default function Hubs() {
             value={form.address}
             onChange={(e) => setForm({ ...form, address: e.target.value })}
             placeholder="12 rue de la Logistique, 75018 Paris"
+          />
+        </Labeled>
+
+        <Labeled label="City *">
+          <input
+            style={inputStyle}
+            value={form.city}
+            onChange={(e) => setForm({ ...form, city: e.target.value })}
+            placeholder="Paris"
+          />
+        </Labeled>
+
+        <Labeled label="Zip code *">
+          <input
+            style={inputStyle}
+            value={form.zip_code}
+            onChange={(e) => setForm({ ...form, zip_code: e.target.value })}
+            placeholder="75018"
           />
         </Labeled>
 
