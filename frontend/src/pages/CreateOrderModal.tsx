@@ -138,7 +138,8 @@ export default function CreateOrderModal({
         style={{
           background: "var(--bg-color)",
           color: "var(--font-color)",
-          border: "1px solid color-mix(in srgb, var(--font-color) 16%, transparent)",
+          border:
+            "1px solid color-mix(in srgb, var(--font-color) 16%, transparent)",
           borderRadius: 12,
           width: 560,
           maxWidth: "92vw",
@@ -210,9 +211,17 @@ export default function CreateOrderModal({
             <Field label="Origin hub">
               <select
                 value={form.hub_id}
-                onChange={(e) => update("hub_id", e.target.value)}
+                onChange={(e) => {
+                  const hub = hubs.find((h) => h.id === e.target.value);
+                  setForm((f) => ({
+                    ...f,
+                    hub_id: e.target.value,
+                    pickup_address: hub ? hub.address : f.pickup_address,
+                  }));
+                }}
                 style={selectStyle}
               >
+                {" "}
                 <option value="" disabled>
                   Select a hub…
                 </option>
@@ -411,3 +420,4 @@ const secondaryBtn: React.CSSProperties = {
   fontWeight: 600,
   cursor: "pointer",
 };
+

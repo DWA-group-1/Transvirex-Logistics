@@ -20,6 +20,7 @@ export interface DriverRef {
   first_name: string;
   last_name: string;
   phone: string | null;
+  hub_id: string | null;
   is_active: boolean;
 }
 
@@ -441,8 +442,12 @@ export const declareIncident = (
   body: { type: string; description: string; severity?: string },
 ) => apiCall(`/delivery/deliveries/${deliveryId}/incidents`, "POST", body);
 
-export const getDrivers = async (): Promise<{ items: DriverRef[] }> =>
-  apiCall("/catalog/drivers?is_active=true&limit=100");
+export const getDrivers = async (
+  hubId?: string,
+): Promise<{ items: DriverRef[] }> =>
+  apiCall(
+    `/catalog/drivers?is_active=true&limit=100${hubId ? `&hub_id=${hubId}` : ""}`,
+  );
 
 export const getHubs = async (): Promise<{ items: HubRef[] }> =>
   apiCall("/catalog/hubs?is_active=true&limit=100");
@@ -494,6 +499,7 @@ export const createDriver = async (payload: {
   first_name: string;
   last_name: string;
   phone?: string | null;
+  hub_id?: string | null;
 }): Promise<DriverRef> => apiCall("/catalog/drivers", "POST", payload);
 
 export interface KpiValues {
