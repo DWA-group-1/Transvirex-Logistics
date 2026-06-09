@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from transvirex_common.database import create_session_factory
 from transvirex_common.events import EventBus
 
-from . import db
+from . import db, handlers
 from .config import settings
 
 logging.basicConfig(
@@ -20,6 +20,9 @@ async def lifespan(app: FastAPI):
     db.set_session_maker(maker)
 
     bus = EventBus(settings.redis_url, producer_name="reporting")
+    bus.on("delivery.events", handlers.on_delivery_event)
+    bus.on("catalog.events", handlers.on_catalog_event)
+    bus.on("billing.events", handlers.on_billing_event)
     await bus.start()
     app.state.bus = bus
 
