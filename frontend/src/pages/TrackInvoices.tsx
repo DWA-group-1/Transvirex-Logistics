@@ -220,7 +220,58 @@ function TrackInvoices() {
   };
 
   const handleExport = () => {
-    alert("Export feature coming soon!");
+    const rows = filteredInvoices.map((invoice) => ({
+      invoice_number: invoice.number,
+      customer_id: invoice.customer_id,
+      deliveries: invoice.delivery_count,
+      amount: Number(invoice.total_amount).toFixed(2),
+      status: displayStatus(invoice),
+      due_date: formatDate(invoice.due_date),
+      paid_date: formatDate(invoice.payment_date),
+    }));
+
+    const headers = [
+      "Invoice Number",
+      "Customer ID",
+      "Deliveries",
+      "Amount",
+      "Status",
+      "Due Date",
+      "Paid Date",
+    ];
+
+    const csvRows = [
+      headers.join(","),
+      ...rows.map((row) =>
+        [
+          row.invoice_number,
+          row.customer_id,
+          row.deliveries,
+          row.amount,
+          row.status,
+          row.due_date,
+          row.paid_date,
+        ]
+          .map((value) => `"${String(value).replace(/"/g, '""')}"`)
+          .join(","),
+      ),
+    ];
+
+    const blob = new Blob([csvRows.join("\n")], {
+      type: "text/csv;charset=utf-8;",
+    });
+
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `transvirex-invoices-${new Date().toISOString().slice(0, 10)}.csv`;
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    URL.revokeObjectURL(url);
   };
 
   return (
