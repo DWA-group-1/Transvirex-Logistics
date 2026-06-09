@@ -7,6 +7,7 @@ from transvirex_common.events import EventBus
 
 from . import db, handlers
 from .config import settings
+from .routes import kpi as kpi_router
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
@@ -33,6 +34,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Reporting Service", version="1.0", lifespan=lifespan)
+app.include_router(kpi_router.router)
 
 
 @app.get("/health")
