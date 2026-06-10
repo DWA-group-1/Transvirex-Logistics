@@ -31,7 +31,7 @@ s ?= auth
         migrate-create migrate-create-auth migrate-create-notif migrate-create-catalog migrate-create-delivery migrate-create-reporting \
         migrate-current migrate-current-auth migrate-current-notif migrate-current-catalog migrate-current-delivery migrate-current-reporting \
         migrate-history migrate-history-auth migrate-history-notif migrate-history-catalog migrate-history-delivery migrate-history-reporting \
-        seed-admin \
+        seed-admin seed-kpi \
         test test-auth test-notif test-catalog test-delivery test-reporting lint format \
         clean nuke
 
@@ -337,6 +337,9 @@ migrate-history-reporting:
 
 seed-admin:
 	$(COMPOSE) exec auth python -m scripts.seed_admin
+
+seed-kpi:
+	$(COMPOSE) exec reporting python -m scripts.seed_kpi_history
 
 test: test-auth test-notif test-catalog test-delivery test-reporting
 
