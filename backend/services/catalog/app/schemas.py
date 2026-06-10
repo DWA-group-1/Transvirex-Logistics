@@ -88,6 +88,8 @@ class CustomerCreate(BaseModel):
     contact_name: str | None = Field(default=None, max_length=200)
     email: str | None = None
     address: str = Field(min_length=1)
+    city: str = Field(min_length=1, max_length=100)
+    zip_code: str = Field(min_length=1, max_length=20)
 
 
 class CustomerUpdate(BaseModel):
@@ -95,16 +97,21 @@ class CustomerUpdate(BaseModel):
     contact_name: str | None = Field(default=None, max_length=200)
     email: str | None = None
     address: str | None = Field(default=None, min_length=1)
+    city: str | None = Field(default=None, min_length=1, max_length=100)
+    zip_code: str | None = Field(default=None, min_length=1, max_length=20)
 
 
 class CustomerOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    reference: str
     name: str
     contact_name: str | None
     email: str | None
     address: str
+    city: str
+    zip_code: str
     is_active: bool
     created_at: datetime
     updated_at: datetime

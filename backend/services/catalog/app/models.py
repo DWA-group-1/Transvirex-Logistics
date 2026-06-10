@@ -88,10 +88,15 @@ class Customer(Base):
     id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True), primary_key=True, default=uuid4
     )
+    reference: Mapped[str] = mapped_column(
+        String, unique=True, index=True, nullable=False
+    )
     name: Mapped[str] = mapped_column(String, nullable=False, index=True)
     contact_name: Mapped[str | None] = mapped_column(String, nullable=True)
     email: Mapped[str | None] = mapped_column(String, nullable=True)
     address: Mapped[str] = mapped_column(String, nullable=False)
+    city: Mapped[str] = mapped_column(String, nullable=False)
+    zip_code: Mapped[str] = mapped_column(String, nullable=False)
     is_active: Mapped[bool] = mapped_column(
         Boolean, server_default="true", nullable=False
     )

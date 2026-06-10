@@ -194,9 +194,22 @@ export default function CreateOrderModal({
             <Field label="Customer">
               <select
                 value={form.customer_id}
-                onChange={(e) => update("customer_id", e.target.value)}
+                onChange={(e) => {
+                  const cust = customers.find((c) => c.id === e.target.value);
+                  const pickup = cust
+                    ? [cust.address, cust.city, cust.zip_code]
+                        .filter(Boolean)
+                        .join(", ")
+                    : "";
+                  setForm((f) => ({
+                    ...f,
+                    customer_id: e.target.value,
+                    pickup_address: pickup || f.pickup_address,
+                  }));
+                }}
                 style={selectStyle}
               >
+                {" "}
                 <option value="" disabled>
                   Select a customer…
                 </option>
@@ -211,16 +224,7 @@ export default function CreateOrderModal({
             <Field label="Origin hub">
               <select
                 value={form.hub_id}
-                onChange={(e) => {
-                  const hub = hubs.find((h) => h.id === e.target.value);
-                  setForm((f) => ({
-                    ...f,
-                    hub_id: e.target.value,
-                    pickup_address: hub ? hub.address : f.pickup_address,
-                    city: hub?.city ?? f.city,
-                    zip_code: hub?.zip_code ?? f.zip_code,
-                  }));
-                }}
+                onChange={(e) => update("hub_id", e.target.value)}
                 style={selectStyle}
               >
                 {" "}

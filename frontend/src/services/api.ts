@@ -38,10 +38,13 @@ export interface HubRef {
 
 export interface CustomerRef {
   id: string;
+  reference: string;
   name: string;
   contact_name: string | null;
   email: string | null;
   address: string;
+  city: string;
+  zip_code: string;
   is_active: boolean;
 }
 
@@ -464,6 +467,8 @@ export const createCustomer = async (payload: {
   contact_name?: string | null;
   email?: string | null;
   address: string;
+  city: string;
+  zip_code: string;
 }): Promise<CustomerRef> => apiCall("/catalog/customers", "POST", payload);
 
 export const createHub = async (payload: {

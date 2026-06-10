@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from transvirex_common.database import get_db
 from transvirex_common.deps import require_role
+from transvirex_common.references import next_reference
 
 from ..models import Customer
 from ..schemas import CustomerCreate, CustomerList, CustomerOut, CustomerUpdate
@@ -87,7 +88,10 @@ async def create_customer(
         contact_name=payload.contact_name,
         email=payload.email,
         address=payload.address,
+        city=payload.city,
+        zip_code=payload.zip_code,
     )
+    customer.reference = await next_reference(db, "customer", "CUST", width=3)
     db.add(customer)
     await db.commit()
     await db.refresh(customer)
