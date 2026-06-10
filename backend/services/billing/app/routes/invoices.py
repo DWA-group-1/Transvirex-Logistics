@@ -156,7 +156,7 @@ async def get_invoice(invoice_id: uuid.UUID):
     response_model=InvoiceOut,
     dependencies=[Depends(_require_role("billing", "manager"))],
 )
-async def mark_paid(invoice_id: uuid.UUID, body: MarkPaidRequest):
+async def mark_paid(invoice_id: uuid.UUID, body: MarkPaidRequest, request: Request):
     async with db_holder.SessionMaker() as session:
         result = await session.execute(
             select(Invoice)
@@ -178,6 +178,17 @@ async def mark_paid(invoice_id: uuid.UUID, body: MarkPaidRequest):
         await session.commit()
         await session.refresh(invoice)
 
+        bus = request.app.state.bus
+        await bus.publish(
+            "billing.events",
+            "invoice.paid",
+            {
+                "invoice_id": str(invoice.id),
+                "customer_id": str(invoice.customer_id),
+                "amount": str(invoice.total_amount),
+            },
+        )
+
         return invoice
 
 
@@ -191,3 +202,4 @@ async def list_billable():
         result = await session.execute(select(BillableDelivery))
 
         return result.scalars().all()
+
