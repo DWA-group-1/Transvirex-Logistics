@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from transvirex_common.database import Base
@@ -15,6 +15,7 @@ class Driver(Base):
         primary_key=True,
         default=uuid4,
     )
+    reference: Mapped[str] = mapped_column(String, unique=True, index=True)
     auth_user_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
         unique=True,
@@ -103,3 +104,10 @@ class Customer(Base):
         onupdate=func.now(),
         nullable=False,
     )
+
+
+class Counter(Base):
+    __tablename__ = "counters"
+    entity: Mapped[str] = mapped_column(String, primary_key=True)
+    year: Mapped[int] = mapped_column(Integer, primary_key=True)
+    last_value: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

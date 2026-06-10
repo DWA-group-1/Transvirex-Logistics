@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from transvirex_common.database import get_db
 from transvirex_common.deps import get_authorization_header, require_role
+from transvirex_common.references import next_reference
 
 from ..clients import AuthClient, get_auth_client
 from ..models import Driver, Hub
@@ -134,6 +135,7 @@ async def create_driver(
             phone=payload.phone,
             hub_id=payload.hub_id,
         )
+        driver.reference = await next_reference(db, "driver", "DRV", width=3)
         db.add(driver)
         await db.commit()
         await db.refresh(driver)

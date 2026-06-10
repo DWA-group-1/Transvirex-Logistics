@@ -24,6 +24,7 @@ class DriverOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    reference: str
     auth_user_id: UUID
     email: str
     first_name: str

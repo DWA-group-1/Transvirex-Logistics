@@ -307,7 +307,7 @@ export default function TrackOrders() {
         <tbody>
           {deliveries.map((d) => (
             <tr key={d.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
-              <Td mono>{d.id.slice(0, 8)}</Td>
+              <Td mono>{d.reference ?? d.id.slice(0, 8)}</Td>
               <Td>{d.customer?.name ?? "—"}</Td>
               <Td>{d.delivery_address}</Td>
               <Td>

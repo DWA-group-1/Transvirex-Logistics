@@ -15,6 +15,7 @@ export interface UserOut {
 
 export interface DriverRef {
   id: string;
+  reference: string;
   auth_user_id: string;
   email: string;
   first_name: string;
@@ -54,6 +55,7 @@ export type DeliveryStatus =
 
 export interface DeliveryEnriched {
   id: string;
+  reference: string;
   hub_id: string;
   customer_id: string;
   assigned_driver_id: string | null;
