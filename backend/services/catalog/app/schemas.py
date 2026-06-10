@@ -18,6 +18,7 @@ class DriverUpdate(BaseModel):
     last_name: str | None = Field(default=None, min_length=1, max_length=100)
     phone: str | None = None
     hub_id: UUID | None = None
+    is_active: bool | None = None
 
 
 class DriverOut(BaseModel):
@@ -59,6 +60,7 @@ class HubUpdate(BaseModel):
     city: str = Field(min_length=1, max_length=100)
     zip_code: str = Field(min_length=1, max_length=20)
     capacity: int | None = Field(default=None, ge=0)
+    is_active: bool | None = None
 
 
 class HubOut(BaseModel):
@@ -99,6 +101,7 @@ class CustomerUpdate(BaseModel):
     address: str | None = Field(default=None, min_length=1)
     city: str | None = Field(default=None, min_length=1, max_length=100)
     zip_code: str | None = Field(default=None, min_length=1, max_length=20)
+    is_active: bool | None = None
 
 
 class CustomerOut(BaseModel):

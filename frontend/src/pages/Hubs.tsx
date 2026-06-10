@@ -1,5 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
-import { getHubs, createHub, type HubRef } from "../services/api";
+import {
+  getHubs,
+  createHub,
+  updateHub,
+  deactivateHub,
+  type HubRef,
+} from "../services/api";
 import FormModal from "../components/FormModal";
 import { Labeled, inputStyle, newButton } from "../components/FormBits";
 
@@ -16,30 +22,48 @@ export default function Hubs() {
   const [hubs, setHubs] = useState<HubRef[]>([]);
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
+  const [showInactive, setShowInactive] = useState(false);
 
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...EMPTY });
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setListError(null);
     try {
-      const res = await getHubs();
+      const res = await getHubs(showInactive);
       setHubs(res.items);
     } catch (e: any) {
       setListError(e.message || "Failed to load hubs");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showInactive]);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  function openModal() {
+  function openCreate() {
+    setEditingId(null);
     setForm({ ...EMPTY });
+    setFormError(null);
+    setOpen(true);
+  }
+
+  function openEdit(h: HubRef) {
+    setEditingId(h.id);
+    setForm({
+      code: h.code,
+      name: h.name,
+      address: h.address,
+      city: h.city ?? "",
+      zip_code: h.zip_code ?? "",
+      capacity: h.capacity?.toString() ?? "",
+    });
     setFormError(null);
     setOpen(true);
   }
@@ -57,21 +81,42 @@ export default function Hubs() {
     }
     setSubmitting(true);
     setFormError(null);
+    const payload = {
+      code: form.code.trim(),
+      name: form.name.trim(),
+      address: form.address.trim(),
+      city: form.city.trim(),
+      zip_code: form.zip_code.trim(),
+      capacity: form.capacity === "" ? null : Number(form.capacity),
+    };
     try {
-      await createHub({
-        code: form.code.trim(),
-        name: form.name.trim(),
-        address: form.address.trim(),
-        city: form.city.trim(),
-        zip_code: form.zip_code.trim(),
-        capacity: form.capacity === "" ? null : Number(form.capacity),
-      });
+      if (editingId) {
+        await updateHub(editingId, payload);
+      } else {
+        await createHub(payload);
+      }
       setOpen(false);
       await load();
     } catch (e: any) {
-      setFormError(e.message || "Failed to create hub");
+      setFormError(e.message || "Failed to save hub");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function toggleActive(h: HubRef) {
+    setBusyId(h.id);
+    try {
+      if (h.is_active) {
+        await deactivateHub(h.id);
+      } else {
+        await updateHub(h.id, { is_active: true });
+      }
+      await load();
+    } catch (e: any) {
+      setListError(e.message || "Failed to update hub");
+    } finally {
+      setBusyId(null);
     }
   }
 
@@ -216,7 +261,7 @@ export default function Hubs() {
                 ` · ${hubs.length} hub${hubs.length === 1 ? "" : "s"}`}
             </p>
           </div>
-          <button style={newButton} onClick={openModal}>
+          <button style={newButton} onClick={openCreate}>
             <i className="bi bi-plus-lg me-1" />
             New Hub
           </button>
@@ -224,6 +269,15 @@ export default function Hubs() {
 
         {/* Error */}
         {listError && <div className="lh-error">{listError}</div>}
+
+        <label style={filterToggle}>
+          <input
+            type="checkbox"
+            checked={showInactive}
+            onChange={(e) => setShowInactive(e.target.checked)}
+          />
+          Show inactive
+        </label>
 
         {/* Grid */}
         {loading ? (
@@ -267,13 +321,32 @@ export default function Hubs() {
                       {h.is_active ? "Active" : "Inactive"}
                     </span>
                   </div>
-
-                  <div className="lh-hub-card__footer">
-                    <span>
-                      <i className="bi bi-box-seam me-1" />
-                      Capacity: {h.capacity ?? "—"}
-                    </span>
-                  </div>
+                  <div
+                    className="lh-hub-card__footer"
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <span>Capacity: {h.capacity ?? "—"}</span>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button style={linkBtn} onClick={() => openEdit(h)}>
+                        Edit
+                      </button>
+                      <button
+                        style={h.is_active ? dangerBtn : linkBtn}
+                        disabled={busyId === h.id}
+                        onClick={() => toggleActive(h)}
+                      >
+                        {busyId === h.id
+                          ? "…"
+                          : h.is_active
+                            ? "Deactivate"
+                            : "Reactivate"}
+                      </button>
+                    </div>
+                  </div>{" "}
                 </div>
               ))
             )}
@@ -356,4 +429,27 @@ const themedInput: React.CSSProperties = {
   background: "var(--selected-color)",
   color: "var(--font-color)",
   border: "1px solid color-mix(in srgb, var(--font-color) 20%, transparent)",
+};
+const filterToggle: React.CSSProperties = {
+  display: "inline-flex",
+  gap: 6,
+  alignItems: "center",
+  margin: "8px 0 16px",
+  color: "var(--font-color)",
+  fontSize: 14,
+  cursor: "pointer",
+};
+const linkBtn: React.CSSProperties = {
+  background: "none",
+  border: "1px solid color-mix(in srgb, var(--font-color) 25%, transparent)",
+  color: "var(--font-color)",
+  borderRadius: 6,
+  padding: "4px 10px",
+  fontSize: 13,
+  cursor: "pointer",
+};
+const dangerBtn: React.CSSProperties = {
+  ...linkBtn,
+  color: "#ef4444",
+  borderColor: "color-mix(in srgb, #ef4444 40%, transparent)",
 };

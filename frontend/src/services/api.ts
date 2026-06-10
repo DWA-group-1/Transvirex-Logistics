@@ -329,6 +329,7 @@ export const apiCall = async (
     throw new Error(message);
   }
 
+  if (response.status === 204) return null;
   return response.json();
 };
 
@@ -456,20 +457,31 @@ export const getDrivers = async (
     `/catalog/drivers?is_active=true&limit=100${hubId ? `&hub_id=${hubId}` : ""}`,
   );
 
-export const getHubs = async (): Promise<{ items: HubRef[] }> =>
-  apiCall("/catalog/hubs?is_active=true&limit=100");
+export const getAllDrivers = (
+  includeInactive = false,
+): Promise<{ items: DriverRef[] }> =>
+  apiCall(
+    `/catalog/drivers?limit=100${includeInactive ? "" : "&is_active=true"}`,
+  );
 
-export const getCustomers = async (): Promise<{ items: CustomerRef[] }> =>
-  apiCall("/catalog/customers?is_active=true&limit=100");
+export const updateDriver = (
+  id: string,
+  patch: Partial<{
+    first_name: string;
+    last_name: string;
+    phone: string | null;
+    hub_id: string | null;
+    is_active: boolean;
+  }>,
+): Promise<DriverRef> => apiCall(`/catalog/drivers/${id}`, "PATCH", patch);
 
-export const createCustomer = async (payload: {
-  name: string;
-  contact_name?: string | null;
-  email?: string | null;
-  address: string;
-  city: string;
-  zip_code: string;
-}): Promise<CustomerRef> => apiCall("/catalog/customers", "POST", payload);
+export const deactivateDriver = (id: string): Promise<null> =>
+  apiCall(`/catalog/drivers/${id}`, "DELETE");
+
+export const getHubs = (
+  includeInactive = false,
+): Promise<{ items: HubRef[] }> =>
+  apiCall(`/catalog/hubs${includeInactive ? "" : "?is_active=true"}`);
 
 export const createHub = async (payload: {
   code: string;
@@ -480,11 +492,51 @@ export const createHub = async (payload: {
   capacity?: number | null;
 }): Promise<HubRef> => apiCall("/catalog/hubs", "POST", payload);
 
+export const updateHub = (
+  id: string,
+  patch: Partial<{
+    code: string;
+    name: string;
+    address: string;
+    city: string;
+    zip_code: string;
+    capacity: number | null;
+    is_active: boolean;
+  }>,
+): Promise<HubRef> => apiCall(`/catalog/hubs/${id}`, "PATCH", patch);
+
+export const deactivateHub = (id: string): Promise<null> =>
+  apiCall(`/catalog/hubs/${id}`, "DELETE");
+
+export const getCustomers = (
+  includeInactive = false,
+): Promise<{ items: CustomerRef[] }> =>
+  apiCall(`/catalog/customers${includeInactive ? "" : "?is_active=true"}`);
+
+export const createCustomer = async (payload: {
+  name: string;
+  contact_name?: string | null;
+  email?: string | null;
+  address: string;
+  city: string;
+  zip_code: string;
+}): Promise<CustomerRef> => apiCall("/catalog/customers", "POST", payload);
+
+export const updateCustomer = (
+  id: string,
+  patch: Partial<{
+    name: string;
+    contact_name: string | null;
+    email: string | null;
+    address: string;
+    city: string;
+    zip_code: string;
+    is_active: boolean;
+  }>,
+): Promise<CustomerRef> => apiCall(`/catalog/customers/${id}`, "PATCH", patch);
+
 export const deactivateCustomer = (id: string) =>
   apiCall(`/catalog/customers/${id}`, "DELETE");
-
-export const deactivateHub = (id: string) =>
-  apiCall(`/catalog/hubs/${id}`, "DELETE");
 
 export const getIncidents = async (params?: {
   status?: "open" | "resolved";

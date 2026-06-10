@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback } from "react";
 import {
   getCustomers,
   createCustomer,
+  updateCustomer,
+  deactivateCustomer,
   type CustomerRef,
 } from "../services/api";
 import FormModal from "../components/FormModal";
@@ -27,31 +29,48 @@ export default function Customers() {
   const [customers, setCustomers] = useState<CustomerRef[]>([]);
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
+  const [showInactive, setShowInactive] = useState(false);
 
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...EMPTY });
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setListError(null);
-
     try {
-      const res = await getCustomers();
+      const res = await getCustomers(showInactive);
       setCustomers(res.items);
     } catch (e: any) {
       setListError(e.message || "Failed to load customers");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showInactive]);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  function openModal() {
+  function openCreate() {
+    setEditingId(null);
     setForm({ ...EMPTY });
+    setFormError(null);
+    setOpen(true);
+  }
+
+  function openEdit(c: CustomerRef) {
+    setEditingId(c.id);
+    setForm({
+      name: c.name,
+      contact_name: c.contact_name ?? "",
+      email: c.email ?? "",
+      address: c.address,
+      city: c.city ?? "",
+      zip_code: c.zip_code ?? "",
+    });
     setFormError(null);
     setOpen(true);
   }
@@ -66,26 +85,46 @@ export default function Customers() {
       setFormError("Company name and full address are required.");
       return;
     }
-
     setSubmitting(true);
     setFormError(null);
 
-    try {
-      await createCustomer({
-        name: form.name.trim(),
-        contact_name: form.contact_name.trim() || null,
-        email: form.email.trim() || null,
-        address: form.address.trim(),
-        city: form.city.trim(),
-        zip_code: form.zip_code.trim(),
-      });
+    const payload = {
+      name: form.name.trim(),
+      contact_name: form.contact_name.trim() || null,
+      email: form.email.trim() || null,
+      address: form.address.trim(),
+      city: form.city.trim(),
+      zip_code: form.zip_code.trim(),
+    };
 
+    try {
+      if (editingId) {
+        await updateCustomer(editingId, payload);
+      } else {
+        await createCustomer(payload);
+      }
       setOpen(false);
       await load();
     } catch (e: any) {
-      setFormError(e.message || "Failed to create customer");
+      setFormError(e.message || "Failed to save customer");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function toggleActive(c: CustomerRef) {
+    setBusyId(c.id);
+    try {
+      if (c.is_active) {
+        await deactivateCustomer(c.id);
+      } else {
+        await updateCustomer(c.id, { is_active: true });
+      }
+      await load();
+    } catch (e: any) {
+      setListError(e.message || "Failed to update customer");
+    } finally {
+      setBusyId(null);
     }
   }
 
@@ -94,70 +133,97 @@ export default function Customers() {
       <div style={pageHeaderRow}>
         <div>
           <h1 style={{ margin: 0, color: "var(--font-color)" }}>Customers</h1>
-
           <p style={mutedText}>
             Manage customer accounts referenced by deliveries
             {!loading &&
-              ` · ${customers.length} customer${
-                customers.length === 1 ? "" : "s"
-              }`}
+              ` · ${customers.length} customer${customers.length === 1 ? "" : "s"}`}
           </p>
         </div>
-
-        <button style={newButton} onClick={openModal}>
+        <button style={newButton} onClick={openCreate}>
           + New Customer
         </button>
       </div>
+
+      <label style={filterToggle}>
+        <input
+          type="checkbox"
+          checked={showInactive}
+          onChange={(e) => setShowInactive(e.target.checked)}
+        />
+        Show inactive
+      </label>
 
       {listError && <div style={errorBox}>{listError}</div>}
 
       {loading ? (
         <p style={mutedText}>Loading…</p>
       ) : (
-        <table style={tableStyle}>
-          <thead>
-            <tr style={tableHeaderStyle}>
-              <Th>Reference</Th>
-              <Th>Company</Th>
-              <Th>Contact</Th>
-              <Th>Email</Th>
-              <Th>Address</Th>
-              <Th>City</Th>
-              <Th>Status</Th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {customers.map((c) => (
-              <tr key={c.id} style={tableRowStyle}>
-                <Td>{c.reference}</Td>
-                <Td>{c.name}</Td>
-                <Td>{c.contact_name ?? "—"}</Td>
-                <Td>{c.email ?? "—"}</Td>
-                <Td>{c.address}</Td>
-                <Td>{c.city}</Td>
-                <Td>{c.is_active ? "Active" : "Inactive"}</Td>
+        <div style={{ overflowX: "auto" }}>
+          <table style={tableStyle}>
+            <thead>
+              <tr style={tableHeaderStyle}>
+                <Th>Reference</Th>
+                <Th>Company</Th>
+                <Th>Contact</Th>
+                <Th>Email</Th>
+                <Th>Address</Th>
+                <Th>City</Th>
+                <Th>Status</Th>
+                <Th>Actions</Th>
               </tr>
-            ))}
-
-            {customers.length === 0 && (
-              <tr>
-                <Td colSpan={5}>
-                  No customers yet. Create one to get started.
-                </Td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {customers.map((c) => (
+                <tr
+                  key={c.id}
+                  style={{ ...tableRowStyle, opacity: c.is_active ? 1 : 0.55 }}
+                >
+                  <Td>{c.reference ?? "—"}</Td>
+                  <Td>{c.name}</Td>
+                  <Td>{c.contact_name ?? "—"}</Td>
+                  <Td>{c.email ?? "—"}</Td>
+                  <Td>{c.address}</Td>
+                  <Td>{c.city ?? "—"}</Td>
+                  <Td>{c.is_active ? "Active" : "Inactive"}</Td>
+                  <Td>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button style={linkBtn} onClick={() => openEdit(c)}>
+                        Edit
+                      </button>
+                      <button
+                        style={c.is_active ? dangerBtn : linkBtn}
+                        disabled={busyId === c.id}
+                        onClick={() => toggleActive(c)}
+                      >
+                        {busyId === c.id
+                          ? "…"
+                          : c.is_active
+                            ? "Deactivate"
+                            : "Reactivate"}
+                      </button>
+                    </div>
+                  </Td>
+                </tr>
+              ))}
+              {customers.length === 0 && (
+                <tr>
+                  <Td colSpan={8}>
+                    No customers yet. Create one to get started.
+                  </Td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       )}
 
       <FormModal
         open={open}
-        title="New customer"
+        title={editingId ? "Edit customer" : "New customer"}
         onClose={() => setOpen(false)}
         onSubmit={handleSubmit}
         submitting={submitting}
-        submitLabel="Create customer"
+        submitLabel={editingId ? "Save changes" : "Create customer"}
         error={formError}
       >
         <Labeled label="Company name *">
@@ -168,7 +234,6 @@ export default function Customers() {
             placeholder="EcomExpress SAS"
           />
         </Labeled>
-
         <Labeled label="Contact name">
           <input
             style={themedInput}
@@ -177,7 +242,6 @@ export default function Customers() {
             placeholder="John Smith"
           />
         </Labeled>
-
         <Labeled label="Email">
           <input
             style={themedInput}
@@ -186,7 +250,6 @@ export default function Customers() {
             placeholder="contact@ecomexpress.fr"
           />
         </Labeled>
-
         <Labeled label="Address *">
           <input
             style={themedInput}
@@ -195,7 +258,6 @@ export default function Customers() {
             placeholder="15 Commerce Street"
           />
         </Labeled>
-
         <Labeled label="City *">
           <input
             style={themedInput}
@@ -204,7 +266,6 @@ export default function Customers() {
             placeholder="Paris"
           />
         </Labeled>
-
         <Labeled label="Zip code *">
           <input
             style={themedInput}
@@ -222,12 +283,19 @@ const pageStyle: React.CSSProperties = {
   padding: 24,
   color: "var(--font-color)",
 };
-
 const mutedText: React.CSSProperties = {
   color: "color-mix(in srgb, var(--font-color) 65%, transparent)",
   margin: "4px 0 0",
 };
-
+const filterToggle: React.CSSProperties = {
+  display: "inline-flex",
+  gap: 6,
+  alignItems: "center",
+  margin: "8px 0 16px",
+  color: "var(--font-color)",
+  fontSize: 14,
+  cursor: "pointer",
+};
 const errorBox: React.CSSProperties = {
   background: "color-mix(in srgb, #ef4444 16%, var(--bg-color))",
   color: "#ef4444",
@@ -236,28 +304,38 @@ const errorBox: React.CSSProperties = {
   borderRadius: 8,
   marginBottom: 16,
 };
-
 const tableStyle: React.CSSProperties = {
   width: "100%",
+  minWidth: 820,
   borderCollapse: "collapse",
   color: "var(--font-color)",
 };
-
 const tableHeaderStyle: React.CSSProperties = {
   background: "var(--selected-color)",
   color: "var(--font-color)",
   textAlign: "left",
 };
-
 const tableRowStyle: React.CSSProperties = {
   borderBottom:
     "1px solid color-mix(in srgb, var(--font-color) 12%, transparent)",
 };
-
 const themedInput: React.CSSProperties = {
   ...inputStyle,
   background: "var(--selected-color)",
   color: "var(--font-color)",
   border: "1px solid color-mix(in srgb, var(--font-color) 20%, transparent)",
 };
-
+const linkBtn: React.CSSProperties = {
+  background: "none",
+  border: "1px solid color-mix(in srgb, var(--font-color) 25%, transparent)",
+  color: "var(--font-color)",
+  borderRadius: 6,
+  padding: "4px 10px",
+  fontSize: 13,
+  cursor: "pointer",
+};
+const dangerBtn: React.CSSProperties = {
+  ...linkBtn,
+  color: "#ef4444",
+  borderColor: "color-mix(in srgb, #ef4444 40%, transparent)",
+};
