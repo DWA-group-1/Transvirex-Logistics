@@ -1,16 +1,28 @@
-import { useState, useEffect } from "react";
-import type { FormEvent } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Container, Form, Alert } from "react-bootstrap";
+import { Button, Container, Alert } from "react-bootstrap";
 import {
   registerWorker,
   createDriver,
   getCurrentRole,
   getHubs,
+  getDrivers,
+  type DriverRef,
   type HubRef,
 } from "../services/api";
+import FormModal from "../components/FormModal";
+import {
+  Labeled,
+  inputStyle,
+  Th,
+  Td,
+  pageHeaderRow,
+  newButton,
+} from "../components/FormBits";
 
 type Role = "driver" | "dispatcher" | "billing" | "manager";
+
+const [showPassword, setShowPassword] = useState(false);
 
 const ROLE_OPTIONS: { value: Role; label: string }[] = [
   { value: "driver", label: "Driver" },
@@ -18,6 +30,16 @@ const ROLE_OPTIONS: { value: Role; label: string }[] = [
   { value: "billing", label: "Billing" },
   { value: "manager", label: "Manager" },
 ];
+
+const EMPTY_FORM = {
+  role: "driver" as Role,
+  email: "",
+  password: "",
+  firstName: "",
+  lastName: "",
+  phone: "",
+  hubId: "",
+};
 
 function generatePassword(): string {
   const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -72,7 +94,7 @@ function CredentialsScreen({
     >
       <div className="container-fluid">
         <h4 className="mb-4 fw-bold" style={{ color: "var(--font-color)" }}>
-          Account Created
+          Account created
         </h4>
 
         <div style={panelStyle}>
@@ -111,9 +133,9 @@ function CredentialsScreen({
             <Button
               variant="secondary"
               size="lg"
-              onClick={() => navigate("/home")}
+              onClick={() => navigate("/register")}
             >
-              Back to Dashboard
+              Back to workers
             </Button>
           </div>
         </div>
@@ -145,30 +167,46 @@ function CredentialItem({
 function Register() {
   const navigate = useNavigate();
 
-  const [role, setRole] = useState<Role>("driver");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [drivers, setDrivers] = useState<DriverRef[]>([]);
+  const [loadingList, setLoadingList] = useState(true);
+  const [listError, setListError] = useState<string | null>(null);
+
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ ...EMPTY_FORM });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [created, setCreated] = useState<CreatedCredentials | null>(null);
-  const [hubId, setHubId] = useState("");
   const [hubs, setHubs] = useState<HubRef[]>([]);
 
-  const isDriver = role === "driver";
+  const isDriver = form.role === "driver";
   const currentRole = getCurrentRole();
 
+  const loadDrivers = useCallback(async () => {
+    setListError(null);
+
+    try {
+      const res = await getDrivers();
+      setDrivers(res.items);
+    } catch (e: any) {
+      setListError(e.message || "Failed to load workers");
+    } finally {
+      setLoadingList(false);
+    }
+  }, []);
+
   useEffect(() => {
-    if (role === "driver" && hubs.length === 0) {
+    loadDrivers();
+  }, [loadDrivers]);
+
+  useEffect(() => {
+    if (form.role === "driver" && hubs.length === 0) {
       getHubs()
         .then((h) => setHubs(h.items))
         .catch(() => {
           /* non-blocking */
         });
     }
-  }, [role, hubs.length]);
+  }, [form.role, hubs.length]);
 
   if (currentRole !== "manager") {
     return (
@@ -177,12 +215,12 @@ function Register() {
         style={centerContainer}
       >
         <div className="text-center" style={{ color: "var(--font-color)" }}>
-          <h4 className="mb-3">Access Denied</h4>
+          <h4 className="mb-3">Access denied</h4>
 
           <p style={mutedText}>Only managers can create new accounts.</p>
 
           <Button variant="primary" onClick={() => navigate("/home")}>
-            Back to Dashboard
+            Back to dashboard
           </Button>
         </div>
       </Container>
@@ -195,36 +233,48 @@ function Register() {
         credentials={created}
         onAddAnother={() => {
           setCreated(null);
-          setRole("driver");
-          setEmail("");
-          setPassword("");
-          setFirstName("");
-          setLastName("");
-          setPhone("");
-          setHubId("");
+          setForm({ ...EMPTY_FORM });
           setError(null);
+          setOpen(true);
         }}
       />
     );
   }
 
-  const handleGenerate = () => setPassword(generatePassword());
+  const resetForm = () => {
+    setForm({ ...EMPTY_FORM });
+    setError(null);
+  };
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const openModal = () => {
+    resetForm();
+    setOpen(true);
+  };
+
+  const closeModal = () => {
+    if (loading) return;
+    setOpen(false);
+    resetForm();
+  };
+
+  const handleGenerate = () => {
+    setForm((current) => ({ ...current, password: generatePassword() }));
+  };
+
+  const handleSubmit = async () => {
     setError(null);
 
-    if (!email.trim() || !password.trim()) {
+    if (!form.email.trim() || !form.password.trim()) {
       setError("Please fill in all required fields.");
       return;
     }
 
-    if (password.length < 8) {
+    if (form.password.length < 8) {
       setError("Password must be at least 8 characters.");
       return;
     }
 
-    if (isDriver && (!firstName.trim() || !lastName.trim())) {
+    if (isDriver && (!form.firstName.trim() || !form.lastName.trim())) {
       setError("First and last name are required for drivers.");
       return;
     }
@@ -234,22 +284,28 @@ function Register() {
     try {
       if (isDriver) {
         await createDriver({
-          email: email.trim(),
-          password,
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
-          phone: phone.trim() || null,
-          hub_id: hubId.trim() || null,
+          email: form.email.trim(),
+          password: form.password,
+          first_name: form.firstName.trim(),
+          last_name: form.lastName.trim(),
+          phone: form.phone.trim() || null,
+          hub_id: form.hubId.trim() || null,
         });
       } else {
         await registerWorker({
-          email: email.trim(),
-          password,
-          role: role as "dispatcher" | "billing" | "manager",
+          email: form.email.trim(),
+          password: form.password,
+          role: form.role as "dispatcher" | "billing" | "manager",
         });
       }
 
-      setCreated({ email: email.trim(), password, role });
+      setOpen(false);
+      await loadDrivers();
+      setCreated({
+        email: form.email.trim(),
+        password: form.password,
+        role: form.role,
+      });
     } catch (err: any) {
       setError(err.message || "Registration failed.");
     } finally {
@@ -258,199 +314,205 @@ function Register() {
   };
 
   return (
-    <Container
-      className="d-flex align-items-center justify-content-center"
-      style={centerContainer}
-    >
-      <div className="container-fluid">
-        <h4
-          className="mb-4 fw-bold text-center"
-          style={{ color: "var(--font-color)" }}
-        >
-          Create Worker Account
-        </h4>
+    <div style={pageStyle}>
+      <div style={pageHeaderRow}>
+        <div>
+          <h1 style={{ margin: 0, color: "var(--font-color)" }}>Workers</h1>
 
-        <Form style={panelStyle} onSubmit={handleSubmit}>
-          {error && (
-            <Alert variant="danger" onClose={() => setError(null)} dismissible>
-              {error}
-            </Alert>
-          )}
+          <p style={mutedText}>
+            Manage worker accounts used by the logistics platform
+            {!loadingList &&
+              ` · ${drivers.length} driver${drivers.length === 1 ? "" : "s"}`}
+          </p>
+        </div>
 
-          <Form.Group className="mb-4">
-            <Form.Label style={labelStyle} htmlFor="registerRole">
-              Role
-            </Form.Label>
+        <button style={newButton} onClick={openModal}>
+          + Add User
+        </button>
+      </div>
 
-            <Form.Select
-              id="registerRole"
-              size="lg"
-              value={role}
-              onChange={(e) => setRole(e.target.value as Role)}
-              disabled={loading}
-              style={inputStyle}
-            >
-              {ROLE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </Form.Select>
-          </Form.Group>
+      {listError && <div style={errorBox}>{listError}</div>}
 
-          <Form.Group className="mb-4">
-            <Form.Label style={labelStyle} htmlFor="registerEmail">
-              Email
-            </Form.Label>
+      {loadingList ? (
+        <p style={mutedText}>Loading…</p>
+      ) : (
+        <table style={tableStyle}>
+          <thead>
+            <tr style={tableHeaderStyle}>
+              <Th>Reference</Th>
+              <Th>Name</Th>
+              <Th>Email</Th>
+              <Th>Phone</Th>
+              <Th>Hub</Th>
+              <Th>Role</Th>
+              <Th>Status</Th>
+            </tr>
+          </thead>
 
-            <Form.Control
-              type="email"
-              id="registerEmail"
-              placeholder="worker@transvirex.com"
-              size="lg"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={loading}
-              style={inputStyle}
-            />
-          </Form.Group>
+          <tbody>
+            {drivers.map((driver) => (
+              <tr key={driver.id} style={tableRowStyle}>
+                <Td>{driver.reference}</Td>
+                <Td>
+                  {driver.first_name} {driver.last_name}
+                </Td>
+                <Td>{driver.email}</Td>
+                <Td>{driver.phone ?? "—"}</Td>
+                <Td>{getHubLabel(driver.hub_id, hubs)}</Td>
+                <Td>Driver</Td>
+                <Td>{driver.is_active ? "Active" : "Inactive"}</Td>
+              </tr>
+            ))}
 
-          {isDriver && (
-            <>
-              <div className="d-flex gap-3 mb-4">
-                <Form.Group className="flex-fill">
-                  <Form.Label style={labelStyle} htmlFor="registerFirstName">
-                    First name
-                  </Form.Label>
+            {drivers.length === 0 && (
+              <tr>
+                <Td colSpan={7}>No workers yet. Create one to get started.</Td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      )}
 
-                  <Form.Control
-                    id="registerFirstName"
-                    placeholder="Marie"
-                    size="lg"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    disabled={loading}
-                    style={inputStyle}
-                  />
-                </Form.Group>
+      <FormModal
+        open={open}
+        title="New worker"
+        onClose={closeModal}
+        onSubmit={handleSubmit}
+        submitting={loading}
+        submitLabel="Create account"
+        error={error}
+      >
+        <Labeled label="Role">
+          <select
+            style={themedInput}
+            value={form.role}
+            onChange={(e) => setForm({ ...form, role: e.target.value as Role })}
+            disabled={loading}
+          >
+            {ROLE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </Labeled>
 
-                <Form.Group className="flex-fill">
-                  <Form.Label style={labelStyle} htmlFor="registerLastName">
-                    Last name
-                  </Form.Label>
+        <Labeled label="Email *">
+          <input
+            style={themedInput}
+            type="email"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            placeholder="worker@transvirex.com"
+            disabled={loading}
+          />
+        </Labeled>
 
-                  <Form.Control
-                    id="registerLastName"
-                    placeholder="Dupont"
-                    size="lg"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    disabled={loading}
-                    style={inputStyle}
-                  />
-                </Form.Group>
-              </div>
-
-              <Form.Group className="mb-4">
-                <Form.Label style={labelStyle} htmlFor="registerPhone">
-                  Phone (optional)
-                </Form.Label>
-
-                <Form.Control
-                  id="registerPhone"
-                  placeholder="+33 6 12 34 56 78"
-                  size="lg"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+        {isDriver && (
+          <>
+            <div style={twoColumnRow}>
+              <Labeled label="First name *">
+                <input
+                  style={themedInput}
+                  value={form.firstName}
+                  onChange={(e) =>
+                    setForm({ ...form, firstName: e.target.value })
+                  }
+                  placeholder="Marie"
                   disabled={loading}
-                  style={inputStyle}
                 />
-              </Form.Group>
-            </>
-          )}
+              </Labeled>
 
-          <Form.Group className="mb-4">
-            <Form.Label style={labelStyle} htmlFor="registerHub">
-              Hub (optional)
-            </Form.Label>
-            <Form.Select
-              id="registerHub"
-              size="lg"
-              value={hubId}
-              onChange={(e) => setHubId(e.target.value)}
-              disabled={loading}
-              style={inputStyle}
-            >
-              <option value="">Unassigned</option>
-              {hubs.map((h) => (
-                <option key={h.id} value={h.id}>
-                  {h.code} — {h.name}
-                </option>
-              ))}
-            </Form.Select>
-          </Form.Group>
-
-          <Form.Group className="mb-4">
-            <Form.Label style={labelStyle} htmlFor="registerPassword">
-              Temporary Password
-            </Form.Label>
-
-            <div className="d-flex gap-2">
-              <Form.Control
-                type="text"
-                id="registerPassword"
-                placeholder="Enter or generate a temporary password"
-                size="lg"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={loading}
-                style={inputStyle}
-              />
-
-              <Button
-                variant="outline-secondary"
-                size="lg"
-                type="button"
-                onClick={handleGenerate}
-                disabled={loading}
-                title="Generate a strong random password"
-                style={{ whiteSpace: "nowrap" }}
-              >
-                <i className="bi bi-stars me-1" />
-                Generate
-              </Button>
+              <Labeled label="Last name *">
+                <input
+                  style={themedInput}
+                  value={form.lastName}
+                  onChange={(e) =>
+                    setForm({ ...form, lastName: e.target.value })
+                  }
+                  placeholder="Dupont"
+                  disabled={loading}
+                />
+              </Labeled>
             </div>
 
-            <Form.Text style={mutedText}>
-              The worker will be asked to change this on first login.
-            </Form.Text>
-          </Form.Group>
+            <Labeled label="Phone">
+              <input
+                style={themedInput}
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                placeholder="+33 6 12 34 56 78"
+                disabled={loading}
+              />
+            </Labeled>
 
-          <div className="d-flex flex-column align-items-center gap-3">
-            <Button
-              variant="primary"
-              size="lg"
-              type="submit"
-              disabled={loading}
-            >
-              {loading ? "Creating…" : "Create Account"}
-            </Button>
+            <Labeled label="Hub">
+              <select
+                style={themedInput}
+                value={form.hubId}
+                onChange={(e) => setForm({ ...form, hubId: e.target.value })}
+                disabled={loading}
+              >
+                <option value="">Unassigned</option>
+                {hubs.map((hub) => (
+                  <option key={hub.id} value={hub.id}>
+                    {hub.code} — {hub.name}
+                  </option>
+                ))}
+              </select>
+            </Labeled>
+          </>
+        )}
 
-            <Button
-              variant="secondary"
-              size="lg"
+        <Labeled label="Temporary password *">
+          <div style={passwordRow}>
+            <div style={{ position: "relative", flex: 1 }}>
+              <input
+                style={{ ...themedInput, width: "100%", paddingRight: 42 }}
+                type={showPassword ? "text" : "password"}
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                placeholder="Enter or generate a temporary password"
+                disabled={loading}
+              />
+
+              <button
+                type="button"
+                onClick={() => setShowPassword((value) => !value)}
+                disabled={loading}
+                style={eyeButton}
+                title={showPassword ? "Hide password" : "Show password"}
+              >
+                <i className={`bi ${showPassword ? "bi bi-eye-slash" : "bi bi-eye"}`} />
+              </button>
+            </div>
+
+            <button
               type="button"
-              onClick={() => navigate("/home")}
+              onClick={handleGenerate}
               disabled={loading}
+              style={generateButton}
+              title="Generate a strong random password"
             >
-              Back to Dashboard
-            </Button>
+              ✨ Generate
+            </button>
           </div>
-        </Form>
-      </div>
-    </Container>
+        </Labeled>
+      </FormModal>
+    </div>
   );
 }
+
+function getHubLabel(hubId: string | null, hubs: HubRef[]) {
+  if (!hubId) return "—";
+  const hub = hubs.find((h) => h.id === hubId);
+  return hub ? `${hub.code} — ${hub.name}` : hubId;
+}
+
+const pageStyle: React.CSSProperties = {
+  padding: 24,
+  color: "var(--font-color)",
+};
 
 const centerContainer: React.CSSProperties = {
   minHeight: "100vh",
@@ -466,19 +528,70 @@ const panelStyle: React.CSSProperties = {
   borderRadius: 16,
 };
 
-const labelStyle: React.CSSProperties = {
-  color: "var(--font-color)",
-  fontWeight: 500,
+const mutedText: React.CSSProperties = {
+  color: "color-mix(in srgb, var(--font-color) 65%, transparent)",
+  margin: "4px 0 0",
 };
 
-const inputStyle: React.CSSProperties = {
+const helperText: React.CSSProperties = {
+  color: "color-mix(in srgb, var(--font-color) 68%, transparent)",
+  fontSize: 13,
+};
+
+const errorBox: React.CSSProperties = {
+  background: "color-mix(in srgb, #ef4444 16%, var(--bg-color))",
+  color: "#ef4444",
+  border: "1px solid color-mix(in srgb, #ef4444 40%, transparent)",
+  padding: "10px 14px",
+  borderRadius: 8,
+  marginBottom: 16,
+};
+
+const tableStyle: React.CSSProperties = {
+  width: "100%",
+  borderCollapse: "collapse",
+  color: "var(--font-color)",
+};
+
+const tableHeaderStyle: React.CSSProperties = {
+  background: "var(--selected-color)",
+  color: "var(--font-color)",
+  textAlign: "left",
+};
+
+const tableRowStyle: React.CSSProperties = {
+  borderBottom:
+    "1px solid color-mix(in srgb, var(--font-color) 12%, transparent)",
+};
+
+const themedInput: React.CSSProperties = {
+  ...inputStyle,
+  width: "100%",
   background: "var(--selected-color)",
   color: "var(--font-color)",
   border: "1px solid color-mix(in srgb, var(--font-color) 20%, transparent)",
 };
 
-const mutedText: React.CSSProperties = {
-  color: "color-mix(in srgb, var(--font-color) 68%, transparent)",
+const twoColumnRow: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  gap: 14,
+};
+
+const passwordRow: React.CSSProperties = {
+  display: "flex",
+  gap: 8,
+};
+
+const generateButton: React.CSSProperties = {
+  background: "transparent",
+  color: "var(--font-color)",
+  border: "1px solid color-mix(in srgb, var(--font-color) 28%, transparent)",
+  borderRadius: 6,
+  padding: "8px 12px",
+  fontWeight: 600,
+  cursor: "pointer",
+  whiteSpace: "nowrap",
 };
 
 const credentialsBox: React.CSSProperties = {
@@ -498,4 +611,3 @@ const hrStyle: React.CSSProperties = {
 };
 
 export default Register;
-
