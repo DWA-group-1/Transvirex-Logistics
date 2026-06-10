@@ -16,6 +16,12 @@ class Settings(BaseSettings):
     notif_url: str = "http://notification:8000"
     catalog_url: str = "http://catalog:8000"
     delivery_url: str = "http://delivery:8000"
+<<<<<<< Updated upstream
+=======
+    billing_url: str = "http://billing:8000"
+    reporting_url: str = "http://reporting:8000"
+    ai_agent_url: str = "http://agent:8000"
+>>>>>>> Stashed changes
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:4173"]
     jwt_algorithm: str = "RS256"
 
