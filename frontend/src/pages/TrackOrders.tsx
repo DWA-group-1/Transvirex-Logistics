@@ -84,7 +84,9 @@ async function transitionDelivery(
 
 export default function TrackOrders() {
   const [deliveries, setDeliveries] = useState<DeliveryEnriched[]>([]);
-  const [drivers, setDrivers] = useState<DriverRef[]>([]);
+  const [driversByHub, setDriversByHub] = useState<Record<string, DriverRef[]>>(
+    {},
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [assigning, setAssigning] = useState<string | null>(null);
@@ -93,15 +95,9 @@ export default function TrackOrders() {
 
   const load = useCallback(async () => {
     setError(null);
-
     try {
-      const [del, drv] = await Promise.all([
-        getDeliveries({ limit: 100 }),
-        getDrivers(),
-      ]);
-
+      const del = await getDeliveries({ limit: 100 }); // no Promise.all wrapper
       setDeliveries(del.items);
-      setDrivers(drv.items);
     } catch (e: any) {
       setError(e.message || "Failed to load deliveries");
     } finally {
@@ -113,6 +109,26 @@ export default function TrackOrders() {
     load();
   }, [load]);
 
+  // Lazily fetch each hub's drivers once, when a "created" delivery for that hub is shown.
+  const ensureHubDrivers = useCallback(
+    async (hubId: string) => {
+      if (!hubId || driversByHub[hubId]) return;
+      try {
+        const res = await getDrivers(hubId);
+        setDriversByHub((m) => ({ ...m, [hubId]: res.items }));
+      } catch {
+        /* leave undefined -> dropdown shows "Loading…"; or set [] to show empty state */
+      }
+    },
+    [driversByHub],
+  );
+
+  useEffect(() => {
+    deliveries
+      .filter((d) => d.status === "created")
+      .forEach((d) => ensureHubDrivers(d.hub_id));
+  }, [deliveries, ensureHubDrivers]);
+
   const total = deliveries.length;
   const completed = deliveries.filter((d) => d.status === "delivered").length;
   const inTransit = deliveries.filter(
@@ -122,9 +138,7 @@ export default function TrackOrders() {
 
   async function handleAssign(deliveryId: string, driverId: string) {
     if (!driverId) return;
-
     setAssigning(deliveryId);
-
     try {
       await assignDriver(deliveryId, driverId);
       await load();
@@ -140,7 +154,6 @@ export default function TrackOrders() {
     action: "pickup" | "depart" | "deliver",
   ) {
     setTransitioning(deliveryId);
-
     try {
       await transitionDelivery(deliveryId, action);
       await load();
@@ -153,17 +166,28 @@ export default function TrackOrders() {
 
   function renderAction(d: DeliveryEnriched) {
     if (d.status === "created") {
+      const hubDrivers = driversByHub[d.hub_id];
+      if (hubDrivers && hubDrivers.length === 0) {
+        return (
+          <span style={{ color: "#b45309", fontSize: 13 }}>
+            No drivers assigned to this hub
+          </span>
+        );
+      }
       return (
         <select
-          disabled={assigning === d.id}
+          disabled={assigning === d.id || !hubDrivers}
           defaultValue=""
           onChange={(e) => handleAssign(d.id, e.target.value)}
         >
           <option value="" disabled>
-            {assigning === d.id ? "Assigning…" : "Assign driver…"}
+            {assigning === d.id
+              ? "Assigning…"
+              : hubDrivers
+                ? "Assign driver…"
+                : "Loading…"}
           </option>
-
-          {drivers.map((drv) => (
+          {(hubDrivers ?? []).map((drv) => (
             <option key={drv.id} value={drv.id}>
               {drv.first_name} {drv.last_name}
             </option>
@@ -182,7 +206,6 @@ export default function TrackOrders() {
         </ActionButton>
       );
     }
-
     if (d.status === "picked_up") {
       return (
         <ActionButton
@@ -193,7 +216,6 @@ export default function TrackOrders() {
         </ActionButton>
       );
     }
-
     if (d.status === "in_transit") {
       return (
         <ActionButton
@@ -204,7 +226,6 @@ export default function TrackOrders() {
         </ActionButton>
       );
     }
-
     return "—";
   }
 
@@ -286,7 +307,7 @@ export default function TrackOrders() {
         <tbody>
           {deliveries.map((d) => (
             <tr key={d.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
-              <Td mono>{d.id.slice(0, 8)}</Td>
+              <Td mono>{d.reference ?? d.id.slice(0, 8)}</Td>
               <Td>{d.customer?.name ?? "—"}</Td>
               <Td>{d.delivery_address}</Td>
               <Td>

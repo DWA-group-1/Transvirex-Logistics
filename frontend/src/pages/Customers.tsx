@@ -14,7 +14,14 @@ import {
   newButton,
 } from "../components/FormBits";
 
-const EMPTY = { name: "", contact_name: "", email: "", address: "" };
+const EMPTY = {
+  name: "",
+  contact_name: "",
+  email: "",
+  address: "",
+  city: "",
+  zip_code: "",
+};
 
 export default function Customers() {
   const [customers, setCustomers] = useState<CustomerRef[]>([]);
@@ -50,8 +57,13 @@ export default function Customers() {
   }
 
   async function handleSubmit() {
-    if (!form.name.trim() || !form.address.trim()) {
-      setFormError("Company name and address are required.");
+    if (
+      !form.name.trim() ||
+      !form.address.trim() ||
+      !form.city.trim() ||
+      !form.zip_code.trim()
+    ) {
+      setFormError("Company name and full address are required.");
       return;
     }
 
@@ -64,6 +76,8 @@ export default function Customers() {
         contact_name: form.contact_name.trim() || null,
         email: form.email.trim() || null,
         address: form.address.trim(),
+        city: form.city.trim(),
+        zip_code: form.zip_code.trim(),
       });
 
       setOpen(false);
@@ -103,10 +117,12 @@ export default function Customers() {
         <table style={tableStyle}>
           <thead>
             <tr style={tableHeaderStyle}>
+              <Th>Reference</Th>
               <Th>Company</Th>
               <Th>Contact</Th>
               <Th>Email</Th>
               <Th>Address</Th>
+              <Th>City</Th>
               <Th>Status</Th>
             </tr>
           </thead>
@@ -114,10 +130,12 @@ export default function Customers() {
           <tbody>
             {customers.map((c) => (
               <tr key={c.id} style={tableRowStyle}>
+                <Td>{c.reference}</Td>
                 <Td>{c.name}</Td>
                 <Td>{c.contact_name ?? "—"}</Td>
                 <Td>{c.email ?? "—"}</Td>
                 <Td>{c.address}</Td>
+                <Td>{c.city}</Td>
                 <Td>{c.is_active ? "Active" : "Inactive"}</Td>
               </tr>
             ))}
@@ -155,9 +173,7 @@ export default function Customers() {
           <input
             style={themedInput}
             value={form.contact_name}
-            onChange={(e) =>
-              setForm({ ...form, contact_name: e.target.value })
-            }
+            onChange={(e) => setForm({ ...form, contact_name: e.target.value })}
             placeholder="John Smith"
           />
         </Labeled>
@@ -176,7 +192,25 @@ export default function Customers() {
             style={themedInput}
             value={form.address}
             onChange={(e) => setForm({ ...form, address: e.target.value })}
-            placeholder="15 Commerce Street, Paris"
+            placeholder="15 Commerce Street"
+          />
+        </Labeled>
+
+        <Labeled label="City *">
+          <input
+            style={themedInput}
+            value={form.city}
+            onChange={(e) => setForm({ ...form, city: e.target.value })}
+            placeholder="Paris"
+          />
+        </Labeled>
+
+        <Labeled label="Zip code *">
+          <input
+            style={themedInput}
+            value={form.zip_code}
+            onChange={(e) => setForm({ ...form, zip_code: e.target.value })}
+            placeholder="75001"
           />
         </Labeled>
       </FormModal>
@@ -226,3 +260,4 @@ const themedInput: React.CSSProperties = {
   color: "var(--font-color)",
   border: "1px solid color-mix(in srgb, var(--font-color) 20%, transparent)",
 };
+

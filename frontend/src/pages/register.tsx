@@ -1,8 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Container, Form, Alert } from "react-bootstrap";
-import { registerWorker, createDriver, getCurrentRole } from "../services/api";
+import {
+  registerWorker,
+  createDriver,
+  getCurrentRole,
+  getHubs,
+  type HubRef,
+} from "../services/api";
 
 type Role = "driver" | "dispatcher" | "billing" | "manager";
 
@@ -148,9 +154,21 @@ function Register() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [created, setCreated] = useState<CreatedCredentials | null>(null);
+  const [hubId, setHubId] = useState("");
+  const [hubs, setHubs] = useState<HubRef[]>([]);
 
   const isDriver = role === "driver";
   const currentRole = getCurrentRole();
+
+  useEffect(() => {
+    if (role === "driver" && hubs.length === 0) {
+      getHubs()
+        .then((h) => setHubs(h.items))
+        .catch(() => {
+          /* non-blocking */
+        });
+    }
+  }, [role, hubs.length]);
 
   if (currentRole !== "manager") {
     return (
@@ -183,6 +201,7 @@ function Register() {
           setFirstName("");
           setLastName("");
           setPhone("");
+          setHubId("");
           setError(null);
         }}
       />
@@ -220,6 +239,7 @@ function Register() {
           first_name: firstName.trim(),
           last_name: lastName.trim(),
           phone: phone.trim() || null,
+          hub_id: hubId.trim() || null,
         });
       } else {
         await registerWorker({
@@ -350,6 +370,27 @@ function Register() {
           )}
 
           <Form.Group className="mb-4">
+            <Form.Label style={labelStyle} htmlFor="registerHub">
+              Hub (optional)
+            </Form.Label>
+            <Form.Select
+              id="registerHub"
+              size="lg"
+              value={hubId}
+              onChange={(e) => setHubId(e.target.value)}
+              disabled={loading}
+              style={inputStyle}
+            >
+              <option value="">Unassigned</option>
+              {hubs.map((h) => (
+                <option key={h.id} value={h.id}>
+                  {h.code} — {h.name}
+                </option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+
+          <Form.Group className="mb-4">
             <Form.Label style={labelStyle} htmlFor="registerPassword">
               Temporary Password
             </Form.Label>
@@ -457,3 +498,4 @@ const hrStyle: React.CSSProperties = {
 };
 
 export default Register;
+

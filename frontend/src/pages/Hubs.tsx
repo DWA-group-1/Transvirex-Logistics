@@ -3,7 +3,14 @@ import { getHubs, createHub, type HubRef } from "../services/api";
 import FormModal from "../components/FormModal";
 import { Labeled, inputStyle, newButton } from "../components/FormBits";
 
-const EMPTY = { code: "", name: "", address: "", capacity: "" };
+const EMPTY = {
+  code: "",
+  name: "",
+  address: "",
+  city: "",
+  zip_code: "",
+  capacity: "",
+};
 
 export default function Hubs() {
   const [hubs, setHubs] = useState<HubRef[]>([]);
@@ -38,8 +45,14 @@ export default function Hubs() {
   }
 
   async function handleSubmit() {
-    if (!form.code.trim() || !form.name.trim() || !form.address.trim()) {
-      setFormError("Code, name and address are required.");
+    if (
+      !form.code.trim() ||
+      !form.name.trim() ||
+      !form.address.trim() ||
+      !form.city.trim() ||
+      !form.zip_code.trim()
+    ) {
+      setFormError("Code, name and the full address are required.");
       return;
     }
     setSubmitting(true);
@@ -49,6 +62,8 @@ export default function Hubs() {
         code: form.code.trim(),
         name: form.name.trim(),
         address: form.address.trim(),
+        city: form.city.trim(),
+        zip_code: form.zip_code.trim(),
         capacity: form.capacity === "" ? null : Number(form.capacity),
       });
       setOpen(false);
@@ -299,7 +314,25 @@ export default function Hubs() {
             style={themedInput}
             value={form.address}
             onChange={(e) => setForm({ ...form, address: e.target.value })}
-            placeholder="12 rue de la Logistique, 75018 Paris"
+            placeholder="12 Rue Logistique"
+          />
+        </Labeled>
+
+        <Labeled label="City *">
+          <input
+            style={themedInput}
+            value={form.city}
+            onChange={(e) => setForm({ ...form, city: e.target.value })}
+            placeholder="Paris"
+          />
+        </Labeled>
+
+        <Labeled label="Zip code *">
+          <input
+            style={themedInput}
+            value={form.zip_code}
+            onChange={(e) => setForm({ ...form, zip_code: e.target.value })}
+            placeholder="75018"
           />
         </Labeled>
 

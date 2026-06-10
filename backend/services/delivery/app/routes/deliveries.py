@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from transvirex_common.database import get_db
 from transvirex_common.deps import get_identity_headers, require_role
+from transvirex_common.references import next_reference
 
 from ..clients import CatalogClient, get_catalog_client
 from ..models import Delivery, DeliveryStatus, Incident, IncidentStatus, TrackingEvent
@@ -214,6 +215,7 @@ async def create_delivery(
         notes=payload.notes,
         status=DeliveryStatus.ASSIGNED if starts_assigned else DeliveryStatus.CREATED,
     )
+    delivery.reference = await next_reference(db, "delivery", "DEL")
     db.add(delivery)
     await db.flush()  # get delivery.id before writing tracking
 
@@ -361,9 +363,7 @@ async def _transition(
                 else None
             ),
             "completed_at": (
-                delivery.updated_at.isoformat()
-                if delivery.updated_at
-                else None
+                delivery.updated_at.isoformat() if delivery.updated_at else None
             ),
             "service_type": delivery.service_type,
             "priority": delivery.priority,

@@ -10,23 +10,27 @@ class DriverCreate(BaseModel):
     first_name: str = Field(min_length=1, max_length=100)
     last_name: str = Field(min_length=1, max_length=100)
     phone: str | None = None
+    hub_id: UUID | None = None
 
 
 class DriverUpdate(BaseModel):
     first_name: str | None = Field(default=None, min_length=1, max_length=100)
     last_name: str | None = Field(default=None, min_length=1, max_length=100)
     phone: str | None = None
+    hub_id: UUID | None = None
 
 
 class DriverOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    reference: str
     auth_user_id: UUID
     email: str
     first_name: str
     last_name: str
     phone: str | None
+    hub_id: UUID | None
     is_active: bool
     created_at: datetime
     updated_at: datetime
@@ -43,13 +47,17 @@ class HubCreate(BaseModel):
     code: str = Field(min_length=1, max_length=20)
     name: str = Field(min_length=1, max_length=200)
     address: str = Field(min_length=1)
+    city: str = Field(min_length=1, max_length=100)
+    zip_code: str | None = Field(default=None, min_length=1, max_length=20)
     capacity: int | None = Field(default=None, ge=0)
 
 
 class HubUpdate(BaseModel):
     code: str | None = Field(default=None, min_length=1, max_length=20)
     name: str | None = Field(default=None, min_length=1, max_length=200)
-    address: str | None = Field(default=None, min_length=1)
+    address: str = Field(min_length=1)
+    city: str = Field(min_length=1, max_length=100)
+    zip_code: str = Field(min_length=1, max_length=20)
     capacity: int | None = Field(default=None, ge=0)
 
 
@@ -60,6 +68,8 @@ class HubOut(BaseModel):
     code: str
     name: str
     address: str
+    city: str
+    zip_code: str
     capacity: int | None
     is_active: bool
     created_at: datetime
@@ -78,6 +88,8 @@ class CustomerCreate(BaseModel):
     contact_name: str | None = Field(default=None, max_length=200)
     email: str | None = None
     address: str = Field(min_length=1)
+    city: str = Field(min_length=1, max_length=100)
+    zip_code: str = Field(min_length=1, max_length=20)
 
 
 class CustomerUpdate(BaseModel):
@@ -85,16 +97,21 @@ class CustomerUpdate(BaseModel):
     contact_name: str | None = Field(default=None, max_length=200)
     email: str | None = None
     address: str | None = Field(default=None, min_length=1)
+    city: str | None = Field(default=None, min_length=1, max_length=100)
+    zip_code: str | None = Field(default=None, min_length=1, max_length=20)
 
 
 class CustomerOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    reference: str
     name: str
     contact_name: str | None
     email: str | None
     address: str
+    city: str
+    zip_code: str
     is_active: bool
     created_at: datetime
     updated_at: datetime

@@ -15,11 +15,13 @@ export interface UserOut {
 
 export interface DriverRef {
   id: string;
+  reference: string;
   auth_user_id: string;
   email: string;
   first_name: string;
   last_name: string;
   phone: string | null;
+  hub_id: string | null;
   is_active: boolean;
 }
 
@@ -28,16 +30,21 @@ export interface HubRef {
   code: string;
   name: string;
   address: string;
+  city: string;
+  zip_code: string;
   capacity: number | null;
   is_active: boolean;
 }
 
 export interface CustomerRef {
   id: string;
+  reference: string;
   name: string;
   contact_name: string | null;
   email: string | null;
   address: string;
+  city: string;
+  zip_code: string;
   is_active: boolean;
 }
 
@@ -51,6 +58,7 @@ export type DeliveryStatus =
 
 export interface DeliveryEnriched {
   id: string;
+  reference: string;
   hub_id: string;
   customer_id: string;
   assigned_driver_id: string | null;
@@ -441,8 +449,12 @@ export const declareIncident = (
   body: { type: string; description: string; severity?: string },
 ) => apiCall(`/delivery/deliveries/${deliveryId}/incidents`, "POST", body);
 
-export const getDrivers = async (): Promise<{ items: DriverRef[] }> =>
-  apiCall("/catalog/drivers?is_active=true&limit=100");
+export const getDrivers = async (
+  hubId?: string,
+): Promise<{ items: DriverRef[] }> =>
+  apiCall(
+    `/catalog/drivers?is_active=true&limit=100${hubId ? `&hub_id=${hubId}` : ""}`,
+  );
 
 export const getHubs = async (): Promise<{ items: HubRef[] }> =>
   apiCall("/catalog/hubs?is_active=true&limit=100");
@@ -455,12 +467,16 @@ export const createCustomer = async (payload: {
   contact_name?: string | null;
   email?: string | null;
   address: string;
+  city: string;
+  zip_code: string;
 }): Promise<CustomerRef> => apiCall("/catalog/customers", "POST", payload);
 
 export const createHub = async (payload: {
   code: string;
   name: string;
   address: string;
+  city: string;
+  zip_code: string;
   capacity?: number | null;
 }): Promise<HubRef> => apiCall("/catalog/hubs", "POST", payload);
 
@@ -494,6 +510,7 @@ export const createDriver = async (payload: {
   first_name: string;
   last_name: string;
   phone?: string | null;
+  hub_id?: string | null;
 }): Promise<DriverRef> => apiCall("/catalog/drivers", "POST", payload);
 
 export interface KpiValues {
