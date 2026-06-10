@@ -14,6 +14,7 @@ import Hubs from "./pages/Hubs.tsx";
 import Incidents from "./pages/Incidents.tsx";
 import AiAgent from "./pages/AiAgent.tsx";
 import Reports from "./pages/Reports.tsx";
+import NotFound from "./pages/NotFound.tsx";
 
 import "./App.css";
 
@@ -125,6 +126,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
     </BrowserRouter>
