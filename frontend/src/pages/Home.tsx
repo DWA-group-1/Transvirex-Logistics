@@ -308,9 +308,18 @@ function Home() {
     <>
       <style>{CSS}</style>
       <div className="tv-dash">
-        <NotificationsCard />
-        {isDriver && <DriverDeliveriesCard />}
-        {isManager && <ManagerFleetCard />}
+        <section className="tv-welcome">
+          <h1>Welcome to Transvirex web app 👋</h1>
+          <p>
+            If you have any question, our AI Agent 🤖 could probably answer it!
+          </p>
+        </section>
+
+        <div className="tv-widget-grid">
+          <NotificationsCard />
+          {isDriver && <DriverDeliveriesCard />}
+          {isManager && <ManagerFleetCard />}
+        </div>
       </div>
     </>
   );
@@ -324,7 +333,50 @@ const CSS = `
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  max-width: 900px;
+  width: 100%;
+}
+
+.tv-welcome {
+  padding: 1.75rem 2rem;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--main-color) 8%, var(--bg-color));
+  border: 0.5px solid var(--selected-color);
+}
+
+.tv-welcome h1 {
+  margin: 0 0 8px;
+  font-size: 32px;
+  line-height: 1.15;
+  font-weight: 700;
+  color: var(--font-color);
+}
+
+.tv-welcome p {
+  margin: 0;
+  font-size: 15px;
+  color: var(--font-color);
+  opacity: .65;
+}
+
+.tv-widget-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.tv-widget-grid > section {
+  min-width: 0;
+}
+
+@media (max-width: 850px) {
+  .tv-widget-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tv-welcome h1 {
+    font-size: 26px;
+  }
 }
 
 .tv-section-title {

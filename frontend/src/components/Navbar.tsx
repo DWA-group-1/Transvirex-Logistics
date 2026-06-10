@@ -384,7 +384,7 @@ function Navbar({ isDark, onToggleTheme }: NavbarProps) {
       </div>
 
       <style>{`
-        @media (max-width: 900px) {
+        @media (max-width: 1250px) {
           .nav-desktop-links { display: none !important; }
           .nav-burger         { display: flex !important; }
         }
