@@ -196,15 +196,12 @@ export default function CreateOrderModal({
                 value={form.customer_id}
                 onChange={(e) => {
                   const cust = customers.find((c) => c.id === e.target.value);
-                  const pickup = cust
-                    ? [cust.address, cust.city, cust.zip_code]
-                        .filter(Boolean)
-                        .join(", ")
-                    : "";
                   setForm((f) => ({
                     ...f,
                     customer_id: e.target.value,
-                    pickup_address: pickup || f.pickup_address,
+                    pickup_address: cust ? cust.address : f.pickup_address,
+                    city: cust?.city ?? f.city,
+                    zip_code: cust?.zip_code ?? f.zip_code,
                   }));
                 }}
                 style={selectStyle}
