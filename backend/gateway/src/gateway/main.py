@@ -48,12 +48,9 @@ SERVICES = {
     "notification": settings.notif_url,
     "catalog": settings.catalog_url,
     "delivery": settings.delivery_url,
-<<<<<<< Updated upstream
-=======
     "billing": settings.billing_url,
     "reporting": settings.reporting_url,
     "ai-agent": settings.ai_agent_url,
->>>>>>> Stashed changes
 }
 
 HOP_BY_HOP = {
