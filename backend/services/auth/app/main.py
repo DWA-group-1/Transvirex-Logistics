@@ -85,8 +85,6 @@ async def require_admin(current_user: User = Depends(get_current_user)) -> User:
 
 
 # ─── Routes ────────────────────────────────────────────────────────────────
-
-
 @app.get("/health")
 def health():
     return {"status": "ok"}

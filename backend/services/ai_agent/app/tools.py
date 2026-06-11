@@ -1,8 +1,3 @@
-"""
-Tool definitions for the AI agent.
-Each tool calls the gateway on behalf of the authenticated user (bearer JWT forwarded).
-"""
-
 import httpx
 
 from .config import settings
@@ -63,9 +58,7 @@ async def get_delivery(jwt: str, delivery_id: str) -> dict:
     return await _get(f"/delivery/deliveries/{delivery_id}", jwt)
 
 
-async def get_delivery_tracking(
-    jwt: str, delivery_id: str, order: str = "asc"
-) -> list:
+async def get_delivery_tracking(jwt: str, delivery_id: str, order: str = "asc") -> list:
     """Return the tracking event history for a delivery."""
     return await _get(
         f"/delivery/deliveries/{delivery_id}/tracking", jwt, params={"order": order}
@@ -144,7 +137,9 @@ async def list_customers(
 async def list_notifications(jwt: str, unread_only: bool = False) -> list:
     """Return notifications for the current user."""
     return await _get(
-        "/notification/notifications", jwt, params={"unread_only": str(unread_only).lower()}
+        "/notification/notifications",
+        jwt,
+        params={"unread_only": str(unread_only).lower()},
     )
 
 
@@ -218,3 +213,4 @@ TOOLS: dict[str, dict] = {
         "params": ["unread_only"],
     },
 }
+

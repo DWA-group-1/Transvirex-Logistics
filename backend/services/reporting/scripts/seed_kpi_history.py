@@ -12,8 +12,8 @@ from app.models import KpiSnapshot, KpiSource
 HISTORY = [
     (date(2025, 11, 1), 13200, "93.5", "4.7", "4.7", "264000", 148, 21),
     (date(2025, 12, 1), 13800, "95.1", "4.2", "4.8", "276000", 152, 18),
-    (date(2026, 1, 1),  14250, "94.2", "4.5", "4.7", "285000", 158, 23),
-    (date(2026, 2, 1),  8450,  "91.8", "5.1", "4.6", "169000", 162, 12),  # partial
+    (date(2026, 1, 1), 14250, "94.2", "4.5", "4.7", "285000", 158, 23),
+    (date(2026, 2, 1), 8450, "91.8", "5.1", "4.6", "169000", 162, 12),  # partial
 ]
 
 
@@ -24,10 +24,14 @@ async def main() -> None:
             await session.execute(
                 pg_insert(KpiSnapshot)
                 .values(
-                    period_month=pm, total_deliveries=total,
-                    on_time_pct=Decimal(ot), avg_delivery_time_h=Decimal(avg_h),
-                    customer_satisfaction=Decimal(csat), revenue=Decimal(rev),
-                    active_drivers=drivers, incidents_count=inc,
+                    period_month=pm,
+                    total_deliveries=total,
+                    on_time_pct=Decimal(ot),
+                    avg_delivery_time_h=Decimal(avg_h),
+                    customer_satisfaction=Decimal(csat),
+                    revenue=Decimal(rev),
+                    active_drivers=drivers,
+                    incidents_count=inc,
                     source=KpiSource.SEEDED.value,
                 )
                 .on_conflict_do_nothing(index_elements=["period_month"])
