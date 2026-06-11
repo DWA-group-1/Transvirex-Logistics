@@ -19,6 +19,12 @@ const SEV_STYLE: Record<string, { bg: string; color: string }> = {
   high: { bg: "#fee2e2", color: "#991b1b" },
 };
 
+const tableWrapper: React.CSSProperties = {
+  width: "100%",
+  overflowX: "auto",
+  WebkitOverflowScrolling: "touch",
+};
+
 export default function Incidents() {
   const [incidents, setIncidents] = useState<IncidentWithDelivery[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,7 +85,7 @@ export default function Incidents() {
 
   return (
     <div style={pageStyle}>
-      <div style={pageHeaderRow}>
+      <div style={responsiveHeader}>
         <div>
           <h1 style={{ margin: 0, color: "var(--font-color)" }}>Incidents</h1>
 
@@ -104,17 +110,18 @@ export default function Incidents() {
       {loading ? (
         <p style={mutedText}>Loading…</p>
       ) : (
-        <table style={tableStyle}>
-          <thead>
-            <tr style={tableHeaderStyle}>
-              <Th>Type</Th>
-              <Th>Severity</Th>
-              <Th>Description</Th>
-              <Th>Delivery</Th>
-              <Th>Status</Th>
-              <Th>Action</Th>
-            </tr>
-          </thead>
+        <div style={tableWrapper}>
+          <table style={tableStyle}>
+            <thead>
+              <tr style={tableHeaderStyle}>
+                <Th>Type</Th>
+                <Th>Severity</Th>
+                <Th>Description</Th>
+                <Th>Delivery</Th>
+                <Th>Status</Th>
+                <Th>Action</Th>
+              </tr>
+            </thead>
 
           <tbody>
             {incidents.map((inc) => {
@@ -176,6 +183,7 @@ export default function Incidents() {
             )}
           </tbody>
         </table>
+      </div>
       )}
 
       <FormModal
@@ -240,6 +248,7 @@ const errorBox: React.CSSProperties = {
 
 const tableStyle: React.CSSProperties = {
   width: "100%",
+  minWidth: 900,
   borderCollapse: "collapse",
   color: "var(--font-color)",
 };
@@ -281,6 +290,15 @@ const themedTextarea: React.CSSProperties = {
   background: "var(--selected-color)",
   color: "var(--font-color)",
   border: "1px solid color-mix(in srgb, var(--font-color) 20%, transparent)",
+};
+
+const responsiveHeader: React.CSSProperties = {
+  ...pageHeaderRow,
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "space-between",
+  gap: 16,
+  flexWrap: "wrap",
 };
 
 function filterButtonStyle(active: boolean): React.CSSProperties {
