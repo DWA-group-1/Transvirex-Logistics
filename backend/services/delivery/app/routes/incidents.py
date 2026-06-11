@@ -51,6 +51,7 @@ async def declare_incident(
         {
             "incident_id": str(incident.id),
             "delivery_id": str(delivery_id),
+            "reference": delivery.reference,
             "type": incident.type,
             "severity": incident.severity,
         },
