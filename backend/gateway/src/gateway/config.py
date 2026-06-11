@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     delivery_url: str = "http://delivery:8000"
     billing_url: str = "http://billing:8000"
     reporting_url: str = "http://reporting:8000"
+    ai_agent_url: str = "http://agent:8000"
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:4173"]
     jwt_algorithm: str = "RS256"
 

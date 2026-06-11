@@ -52,6 +52,7 @@ SERVICES = {
     "delivery": settings.delivery_url,
     "billing": settings.billing_url,
     "reporting": settings.reporting_url,
+    "ai-agent": settings.ai_agent_url,
 }
 
 HOP_BY_HOP = {

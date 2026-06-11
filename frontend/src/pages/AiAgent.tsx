@@ -6,7 +6,7 @@ interface Message {
   content: string;
 }
 
-const AGENT_URL = import.meta.env.VITE_AGENT_URL ?? "http://localhost:8007";
+const AGENT_URL = import.meta.env.VITE_AGENT_URL ?? "http://localhost:8000/ai-agent";
 
 async function streamChat(
   message: string,
