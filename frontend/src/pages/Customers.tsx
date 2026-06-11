@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   getCustomers,
   createCustomer,
@@ -14,7 +14,9 @@ import {
   Td,
   pageHeaderRow,
   newButton,
+  SortableTh,
 } from "../components/FormBits";
+import { useSort } from "../hooks/useSort";
 
 const EMPTY = {
   name: "",
@@ -128,6 +130,24 @@ export default function Customers() {
     }
   }
 
+  const sortAccessors = useMemo(
+    () => ({
+      reference: (c: CustomerRef) => c.reference,
+      name: (c: CustomerRef) => c.name,
+      contact: (c: CustomerRef) => c.contact_name,
+      email: (c: CustomerRef) => c.email,
+      address: (c: CustomerRef) => c.address,
+      city: (c: CustomerRef) => c.city,
+      status: (c: CustomerRef) => c.is_active,
+    }),
+    [],
+  );
+  const { sorted, sortKey, sortDir, toggle } = useSort(
+    customers,
+    sortAccessors,
+    { key: "name" },
+  );
+
   return (
     <div style={pageStyle}>
       <div style={pageHeaderRow}>
@@ -162,18 +182,60 @@ export default function Customers() {
           <table style={tableStyle}>
             <thead>
               <tr style={tableHeaderStyle}>
-                <Th>Reference</Th>
-                <Th>Company</Th>
-                <Th>Contact</Th>
-                <Th>Email</Th>
-                <Th>Address</Th>
-                <Th>City</Th>
-                <Th>Status</Th>
-                <Th>Actions</Th>
+                <SortableTh
+                  label="Reference"
+                  col="reference"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={toggle}
+                />
+                <SortableTh
+                  label="Company"
+                  col="name"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={toggle}
+                />
+                <SortableTh
+                  label="Contact"
+                  col="contact"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={toggle}
+                />
+                <SortableTh
+                  label="Email"
+                  col="email"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={toggle}
+                />
+                <SortableTh
+                  label="Address"
+                  col="address"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={toggle}
+                />
+                <SortableTh
+                  label="City"
+                  col="city"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={toggle}
+                />
+                <SortableTh
+                  label="Status"
+                  col="status"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={toggle}
+                />
+                <Th>Actions</Th> {/* not sortable */}
               </tr>
             </thead>
             <tbody>
-              {customers.map((c) => (
+              {sorted.map((c) => (
                 <tr
                   key={c.id}
                   style={{ ...tableRowStyle, opacity: c.is_active ? 1 : 0.55 }}

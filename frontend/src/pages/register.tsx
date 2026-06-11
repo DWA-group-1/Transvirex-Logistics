@@ -1,14 +1,14 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Container, Alert } from "react-bootstrap";
 import {
   registerWorker,
   createDriver,
+  updateDriver,
+  deactivateDriver,
   getCurrentRole,
   getHubs,
   getDrivers,
-  updateDriver,
-  deactivateDriver,
   type DriverRef,
   type HubRef,
 } from "../services/api";
@@ -18,9 +18,11 @@ import {
   inputStyle,
   Th,
   Td,
+  SortableTh,
   pageHeaderRow,
   newButton,
 } from "../components/FormBits";
+import { useSort } from "../hooks/useSort";
 
 type Role = "driver" | "dispatcher" | "billing" | "manager";
 
@@ -39,6 +41,13 @@ const EMPTY_FORM = {
   lastName: "",
   phone: "",
   hubId: "",
+};
+
+const EMPTY_EDIT = {
+  first_name: "",
+  last_name: "",
+  phone: "",
+  hub_id: "",
 };
 
 function generatePassword(): string {
@@ -173,6 +182,7 @@ function Register() {
   const [drivers, setDrivers] = useState<DriverRef[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
+  const [showInactive, setShowInactive] = useState(false);
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ ...EMPTY_FORM });
@@ -181,18 +191,14 @@ function Register() {
   const [loading, setLoading] = useState(false);
   const [created, setCreated] = useState<CreatedCredentials | null>(null);
   const [hubs, setHubs] = useState<HubRef[]>([]);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({
-    first_name: "",
-    last_name: "",
-    phone: "",
-    hub_id: "",
-  });
+
+  // Edit driver modal
   const [editOpen, setEditOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ ...EMPTY_EDIT });
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [showInactive, setShowInactive] = useState(false);
 
   const isDriver = form.role === "driver";
   const currentRole = getCurrentRole();
@@ -213,11 +219,29 @@ function Register() {
     loadDrivers();
   }, [loadDrivers]);
 
+  // Hubs are needed both for the create form and the edit modal, so load once.
   useEffect(() => {
     getHubs()
       .then((h) => setHubs(h.items))
-      .catch(() => {});
+      .catch(() => {
+        /* non-blocking */
+      });
   }, []);
+
+  const sortAccessors = useMemo(
+    () => ({
+      reference: (d: DriverRef) => d.reference,
+      name: (d: DriverRef) => `${d.first_name} ${d.last_name}`,
+      email: (d: DriverRef) => d.email,
+      phone: (d: DriverRef) => d.phone,
+      hub: (d: DriverRef) => getHubLabel(d.hub_id, hubs),
+      status: (d: DriverRef) => d.is_active,
+    }),
+    [hubs],
+  );
+  const { sorted, sortKey, sortDir, toggle } = useSort(drivers, sortAccessors, {
+    key: "name",
+  });
 
   if (currentRole !== "manager") {
     return (
@@ -376,19 +400,7 @@ function Register() {
         </button>
       </div>
 
-      {listError && <div style={errorBox}>{listError}</div>}
-
-      <label
-        style={{
-          display: "inline-flex",
-          gap: 6,
-          alignItems: "center",
-          margin: "8px 0 16px",
-          fontSize: 14,
-          cursor: "pointer",
-          color: "var(--font-color)",
-        }}
-      >
+      <label style={filterToggle}>
         <input
           type="checkbox"
           checked={showInactive}
@@ -397,69 +409,114 @@ function Register() {
         Show inactive
       </label>
 
+      {listError && <div style={errorBox}>{listError}</div>}
+
       {loadingList ? (
         <p style={mutedText}>Loading…</p>
       ) : (
-        <table style={tableStyle}>
-          <thead>
-            <tr style={tableHeaderStyle}>
-              <Th>Reference</Th>
-              <Th>Name</Th>
-              <Th>Email</Th>
-              <Th>Phone</Th>
-              <Th>Hub</Th>
-              <Th>Role</Th>
-              <Th>Status</Th>
-              <Th>Action</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {drivers.map((driver) => (
-              <tr
-                key={driver.id}
-                style={{
-                  ...tableRowStyle,
-                  opacity: driver.is_active ? 1 : 0.55,
-                }}
-              >
-                <Td>{driver.reference}</Td>
-                <Td>
-                  {driver.first_name} {driver.last_name}
-                </Td>
-                <Td>{driver.email}</Td>
-                <Td>{driver.phone ?? "—"}</Td>
-                <Td>{getHubLabel(driver.hub_id, hubs)}</Td>
-                <Td>Driver</Td>
-                <Td>{driver.is_active ? "Active" : "Inactive"}</Td>
-                <Td>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button style={linkBtn} onClick={() => openEdit(driver)}>
-                      Edit
-                    </button>
-                    <button
-                      style={driver.is_active ? dangerBtn : linkBtn}
-                      disabled={busyId === driver.id}
-                      onClick={() => toggleActive(driver)}
-                    >
-                      {busyId === driver.id
-                        ? "…"
-                        : driver.is_active
-                          ? "Deactivate"
-                          : "Reactivate"}
-                    </button>
-                  </div>
-                </Td>
+        <div style={{ overflowX: "auto" }}>
+          <table style={tableStyle}>
+            <thead>
+              <tr style={tableHeaderStyle}>
+                <SortableTh
+                  label="Reference"
+                  col="reference"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={toggle}
+                />
+                <SortableTh
+                  label="Name"
+                  col="name"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={toggle}
+                />
+                <SortableTh
+                  label="Email"
+                  col="email"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={toggle}
+                />
+                <SortableTh
+                  label="Phone"
+                  col="phone"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={toggle}
+                />
+                <SortableTh
+                  label="Hub"
+                  col="hub"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={toggle}
+                />
+                <Th>Role</Th>
+                <SortableTh
+                  label="Status"
+                  col="status"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={toggle}
+                />
+                <Th>Actions</Th>
               </tr>
-            ))}
-            {drivers.length === 0 && (
-              <tr>
-                <Td colSpan={8}>No workers yet. Create one to get started.</Td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+
+            <tbody>
+              {sorted.map((driver) => (
+                <tr
+                  key={driver.id}
+                  style={{
+                    ...tableRowStyle,
+                    opacity: driver.is_active ? 1 : 0.55,
+                  }}
+                >
+                  <Td>{driver.reference}</Td>
+                  <Td>
+                    {driver.first_name} {driver.last_name}
+                  </Td>
+                  <Td>{driver.email}</Td>
+                  <Td>{driver.phone ?? "—"}</Td>
+                  <Td>{getHubLabel(driver.hub_id, hubs)}</Td>
+                  <Td>Driver</Td>
+                  <Td>{driver.is_active ? "Active" : "Inactive"}</Td>
+                  <Td>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button style={linkBtn} onClick={() => openEdit(driver)}>
+                        Edit
+                      </button>
+                      <button
+                        style={driver.is_active ? dangerBtn : linkBtn}
+                        disabled={busyId === driver.id}
+                        onClick={() => toggleActive(driver)}
+                      >
+                        {busyId === driver.id
+                          ? "…"
+                          : driver.is_active
+                            ? "Deactivate"
+                            : "Reactivate"}
+                      </button>
+                    </div>
+                  </Td>
+                </tr>
+              ))}
+
+              {drivers.length === 0 && (
+                <tr>
+                  <Td colSpan={8}>
+                    No workers yet. Create one to get started.
+                  </Td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       )}
 
+      {/* Create worker modal */}
       <FormModal
         open={open}
         title="New worker"
@@ -589,6 +646,7 @@ function Register() {
         </Labeled>
       </FormModal>
 
+      {/* Edit driver modal */}
       <FormModal
         open={editOpen}
         title="Edit driver"
@@ -598,24 +656,28 @@ function Register() {
         submitLabel="Save changes"
         error={editError}
       >
-        <Labeled label="First name *">
-          <input
-            style={themedInput}
-            value={editForm.first_name}
-            onChange={(e) =>
-              setEditForm({ ...editForm, first_name: e.target.value })
-            }
-          />
-        </Labeled>
-        <Labeled label="Last name *">
-          <input
-            style={themedInput}
-            value={editForm.last_name}
-            onChange={(e) =>
-              setEditForm({ ...editForm, last_name: e.target.value })
-            }
-          />
-        </Labeled>
+        <div style={twoColumnRow}>
+          <Labeled label="First name *">
+            <input
+              style={themedInput}
+              value={editForm.first_name}
+              onChange={(e) =>
+                setEditForm({ ...editForm, first_name: e.target.value })
+              }
+            />
+          </Labeled>
+
+          <Labeled label="Last name *">
+            <input
+              style={themedInput}
+              value={editForm.last_name}
+              onChange={(e) =>
+                setEditForm({ ...editForm, last_name: e.target.value })
+              }
+            />
+          </Labeled>
+        </div>
+
         <Labeled label="Phone">
           <input
             style={themedInput}
@@ -623,8 +685,10 @@ function Register() {
             onChange={(e) =>
               setEditForm({ ...editForm, phone: e.target.value })
             }
+            placeholder="+33 6 12 34 56 78"
           />
         </Labeled>
+
         <Labeled label="Hub">
           <select
             style={themedInput}
@@ -634,9 +698,9 @@ function Register() {
             }
           >
             <option value="">Unassigned</option>
-            {hubs.map((h) => (
-              <option key={h.id} value={h.id}>
-                {h.code} — {h.name}
+            {hubs.map((hub) => (
+              <option key={hub.id} value={hub.id}>
+                {hub.code} — {hub.name}
               </option>
             ))}
           </select>
@@ -685,6 +749,16 @@ const mutedText: React.CSSProperties = {
   margin: "4px 0 0",
 };
 
+const filterToggle: React.CSSProperties = {
+  display: "inline-flex",
+  gap: 6,
+  alignItems: "center",
+  margin: "8px 0 16px",
+  color: "var(--font-color)",
+  fontSize: 14,
+  cursor: "pointer",
+};
+
 const errorBox: React.CSSProperties = {
   background: "color-mix(in srgb, #ef4444 16%, var(--bg-color))",
   color: "#ef4444",
@@ -696,6 +770,7 @@ const errorBox: React.CSSProperties = {
 
 const tableStyle: React.CSSProperties = {
   width: "100%",
+  minWidth: 860,
   borderCollapse: "collapse",
   color: "var(--font-color)",
 };

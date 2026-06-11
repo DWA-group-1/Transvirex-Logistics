@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import CreateOrderModal from "./CreateOrderModal";
 import {
   getDeliveries,
@@ -9,6 +9,7 @@ import {
   type DeliveryStatus,
   type DriverRef,
 } from "../services/api";
+import { useSort } from "../hooks/useSort";
 
 const API_BASE_URL = "http://localhost:8000";
 
@@ -29,6 +30,9 @@ const STATUS_STYLES: Record<DeliveryStatus, { bg: string; color: string }> = {
   delivered: { bg: "#d1fae5", color: "#065f46" },
   cancelled: { bg: "#fee2e2", color: "#991b1b" },
 };
+
+// Logical (not alphabetical) ordering for priority sorting.
+const PRIORITY_RANK: Record<string, number> = { High: 0, Normal: 1, Low: 2 };
 
 function StatusBadge({ status }: { status: DeliveryStatus }) {
   const s = STATUS_STYLES[status];
@@ -103,10 +107,19 @@ function DeliveryAction({
         disabled={assigning === d.id || !hubDrivers}
         defaultValue=""
         onChange={(e) => onAssign(d.id, e.target.value)}
-        style={{ maxWidth: "100%", padding: "5px 8px", borderRadius: 6, fontSize: 13 }}
+        style={{
+          maxWidth: "100%",
+          padding: "5px 8px",
+          borderRadius: 6,
+          fontSize: 13,
+        }}
       >
         <option value="" disabled>
-          {assigning === d.id ? "Assigning…" : hubDrivers ? "Assign driver…" : "Loading…"}
+          {assigning === d.id
+            ? "Assigning…"
+            : hubDrivers
+              ? "Assign driver…"
+              : "Loading…"}
         </option>
         {(hubDrivers ?? []).map((drv) => (
           <option key={drv.id} value={drv.id}>
@@ -118,21 +131,30 @@ function DeliveryAction({
   }
   if (d.status === "assigned") {
     return (
-      <ActionButton disabled={transitioning === d.id} onClick={() => onTransition(d.id, "pickup")}>
+      <ActionButton
+        disabled={transitioning === d.id}
+        onClick={() => onTransition(d.id, "pickup")}
+      >
         Pick up
       </ActionButton>
     );
   }
   if (d.status === "picked_up") {
     return (
-      <ActionButton disabled={transitioning === d.id} onClick={() => onTransition(d.id, "depart")}>
+      <ActionButton
+        disabled={transitioning === d.id}
+        onClick={() => onTransition(d.id, "depart")}
+      >
         Depart
       </ActionButton>
     );
   }
   if (d.status === "in_transit") {
     return (
-      <ActionButton disabled={transitioning === d.id} onClick={() => onTransition(d.id, "deliver")}>
+      <ActionButton
+        disabled={transitioning === d.id}
+        onClick={() => onTransition(d.id, "deliver")}
+      >
         Deliver
       </ActionButton>
     );
@@ -159,7 +181,8 @@ function DeliveryCard({
   return (
     <div
       style={{
-        border: "1px solid color-mix(in srgb, var(--font-color) 12%, transparent)",
+        border:
+          "1px solid color-mix(in srgb, var(--font-color) 12%, transparent)",
         borderRadius: 8,
         padding: "14px 16px",
         background: "var(--selected-color)",
@@ -169,19 +192,33 @@ function DeliveryCard({
         gap: 8,
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 6,
+        }}
+      >
         <span style={{ fontFamily: "monospace", fontSize: 13, opacity: 0.65 }}>
           #{d.reference ?? d.id.slice(0, 8)}
         </span>
         <StatusBadge status={d.status} />
       </div>
 
-      <div style={{ fontWeight: 600, fontSize: 15 }}>{d.customer?.name ?? "—"}</div>
+      <div style={{ fontWeight: 600, fontSize: 15 }}>
+        {d.customer?.name ?? "—"}
+      </div>
       <div style={{ fontSize: 13, opacity: 0.75 }}>{d.delivery_address}</div>
 
       <div style={{ display: "flex", gap: 16, fontSize: 13, flexWrap: "wrap" }}>
-        <span><strong>Priority:</strong> {d.priority}</span>
-        <span><strong>Driver:</strong> {driverName(d)}</span>
+        <span>
+          <strong>Priority:</strong> {d.priority}
+        </span>
+        <span>
+          <strong>Driver:</strong> {driverName(d)}
+        </span>
       </div>
 
       <div style={{ marginTop: 2 }}>
@@ -198,10 +235,40 @@ function DeliveryCard({
   );
 }
 
+// ─── Sortable header cell (table only) ───────────────────────────────────────
+function SortTh({
+  label,
+  col,
+  sortKey,
+  sortDir,
+  onSort,
+}: {
+  label: string;
+  col: string;
+  sortKey: string | null;
+  sortDir: "asc" | "desc";
+  onSort: (col: string) => void;
+}) {
+  const active = sortKey === col;
+  return (
+    <th
+      onClick={() => onSort(col)}
+      style={{ cursor: "pointer", userSelect: "none" }}
+    >
+      {label}
+      <span style={{ marginLeft: 6, opacity: active ? 1 : 0.3, fontSize: 11 }}>
+        {active ? (sortDir === "asc" ? "▲" : "▼") : "↕"}
+      </span>
+    </th>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function TrackOrders() {
   const [deliveries, setDeliveries] = useState<DeliveryEnriched[]>([]);
-  const [driversByHub, setDriversByHub] = useState<Record<string, DriverRef[]>>({});
+  const [driversByHub, setDriversByHub] = useState<Record<string, DriverRef[]>>(
+    {},
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [assigning, setAssigning] = useState<string | null>(null);
@@ -220,7 +287,9 @@ export default function TrackOrders() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const ensureHubDrivers = useCallback(
     async (hubId: string) => {
@@ -228,7 +297,9 @@ export default function TrackOrders() {
       try {
         const res = await getDrivers(hubId);
         setDriversByHub((m) => ({ ...m, [hubId]: res.items }));
-      } catch { /* leave undefined */ }
+      } catch {
+        /* leave undefined */
+      }
     },
     [driversByHub],
   );
@@ -238,6 +309,23 @@ export default function TrackOrders() {
       .filter((d) => d.status === "created")
       .forEach((d) => ensureHubDrivers(d.hub_id));
   }, [deliveries, ensureHubDrivers]);
+
+  const sortAccessors = useMemo(
+    () => ({
+      reference: (d: DeliveryEnriched) => d.reference ?? d.id,
+      customer: (d: DeliveryEnriched) => d.customer?.name,
+      address: (d: DeliveryEnriched) => d.delivery_address,
+      status: (d: DeliveryEnriched) => d.status,
+      priority: (d: DeliveryEnriched) => PRIORITY_RANK[d.priority] ?? 9,
+      driver: (d: DeliveryEnriched) =>
+        d.driver ? `${d.driver.first_name} ${d.driver.last_name}` : null,
+    }),
+    [],
+  );
+  const { sorted, sortKey, sortDir, toggle } = useSort(
+    deliveries,
+    sortAccessors,
+  );
 
   const total = deliveries.length;
   const completed = deliveries.filter((d) => d.status === "delivered").length;
@@ -259,7 +347,10 @@ export default function TrackOrders() {
     }
   }
 
-  async function handleTransition(deliveryId: string, action: "pickup" | "depart" | "deliver") {
+  async function handleTransition(
+    deliveryId: string,
+    action: "pickup" | "depart" | "deliver",
+  ) {
     setTransitioning(deliveryId);
     try {
       await transitionDelivery(deliveryId, action);
@@ -397,30 +488,74 @@ export default function TrackOrders() {
           <table className="orders-table">
             <thead>
               <tr>
-                <th>Order ID</th>
-                <th>Customer</th>
-                <th>Address</th>
-                <th>Status</th>
-                <th>Priority</th>
-                <th>Driver</th>
+                <SortTh
+                  label="Order ID"
+                  col="reference"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={toggle}
+                />
+                <SortTh
+                  label="Customer"
+                  col="customer"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={toggle}
+                />
+                <SortTh
+                  label="Address"
+                  col="address"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={toggle}
+                />
+                <SortTh
+                  label="Status"
+                  col="status"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={toggle}
+                />
+                <SortTh
+                  label="Priority"
+                  col="priority"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={toggle}
+                />
+                <SortTh
+                  label="Driver"
+                  col="driver"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={toggle}
+                />
                 <th>Action</th>
               </tr>
             </thead>
             <tbody>
-              {deliveries.map((d) => (
+              {sorted.map((d) => (
                 <tr key={d.id}>
-                  <td style={{ fontFamily: "monospace" }}>{d.reference ?? d.id.slice(0, 8)}</td>
+                  <td style={{ fontFamily: "monospace" }}>
+                    {d.reference ?? d.id.slice(0, 8)}
+                  </td>
                   <td>{d.customer?.name ?? "—"}</td>
                   <td>{d.delivery_address}</td>
-                  <td><StatusBadge status={d.status} /></td>
+                  <td>
+                    <StatusBadge status={d.status} />
+                  </td>
                   <td>{d.priority}</td>
                   <td>{driverName(d)}</td>
-                  <td><DeliveryAction d={d} {...actionProps} /></td>
+                  <td>
+                    <DeliveryAction d={d} {...actionProps} />
+                  </td>
                 </tr>
               ))}
               {deliveries.length === 0 && (
                 <tr>
-                  <td colSpan={7} style={{ padding: "10px 12px" }}>No deliveries yet.</td>
+                  <td colSpan={7} style={{ padding: "10px 12px" }}>
+                    No deliveries yet.
+                  </td>
                 </tr>
               )}
             </tbody>
@@ -432,7 +567,7 @@ export default function TrackOrders() {
           {deliveries.length === 0 ? (
             <p style={{ color: "#6b7280" }}>No deliveries yet.</p>
           ) : (
-            deliveries.map((d) => (
+            sorted.map((d) => (
               <DeliveryCard key={d.id} d={d} {...actionProps} />
             ))
           )}
@@ -480,19 +615,28 @@ function StatCard({ label, value }: { label: string; value: number }) {
   return (
     <div
       style={{
-        border: "1px solid color-mix(in srgb, var(--font-color) 12%, transparent)",
+        border:
+          "1px solid color-mix(in srgb, var(--font-color) 12%, transparent)",
         borderRadius: 8,
         padding: 16,
         background: "var(--selected-color)",
         color: "var(--font-color)",
       }}
     >
-      <div style={{ color: "color-mix(in srgb, var(--font-color) 70%, transparent)", fontSize: 14 }}>
+      <div
+        style={{
+          color: "color-mix(in srgb, var(--font-color) 70%, transparent)",
+          fontSize: 14,
+        }}
+      >
         {label}
       </div>
-      <div style={{ color: "var(--font-color)", fontSize: 28, fontWeight: 700 }}>
+      <div
+        style={{ color: "var(--font-color)", fontSize: 28, fontWeight: 700 }}
+      >
         {value}
       </div>
     </div>
   );
 }
+

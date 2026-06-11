@@ -55,3 +55,36 @@ export const newButton: React.CSSProperties = {
   cursor: "pointer",
   whiteSpace: "nowrap",
 };
+
+export function SortableTh({
+  label,
+  col,
+  sortKey,
+  sortDir,
+  onSort,
+}: {
+  label: string;
+  col: string;
+  sortKey: string | null;
+  sortDir: "asc" | "desc";
+  onSort: (col: string) => void;
+}) {
+  const active = sortKey === col;
+  return (
+    <th
+      onClick={() => onSort(col)}
+      style={{
+        padding: "10px 12px",
+        fontSize: 13,
+        cursor: "pointer",
+        userSelect: "none",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {label}
+      <span style={{ marginLeft: 6, opacity: active ? 1 : 0.3, fontSize: 11 }}>
+        {active ? (sortDir === "asc" ? "▲" : "▼") : "↕"}
+      </span>
+    </th>
+  );
+}
