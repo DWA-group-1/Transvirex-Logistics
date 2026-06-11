@@ -200,7 +200,7 @@ async def update_driver(
         "driver.updated",
         {
             "driver_id": str(driver.id),
-            "changes": update_data,
+            "changes": payload.model_dump(exclude_unset=True, mode="json"),
         },
     )
 
