@@ -450,11 +450,12 @@ export const declareIncident = (
   body: { type: string; description: string; severity?: string },
 ) => apiCall(`/delivery/deliveries/${deliveryId}/incidents`, "POST", body);
 
-export const getDrivers = async (
+export const getDrivers = (
   hubId?: string,
+  includeInactive = false,
 ): Promise<{ items: DriverRef[] }> =>
   apiCall(
-    `/catalog/drivers?is_active=true&limit=100${hubId ? `&hub_id=${hubId}` : ""}`,
+    `/catalog/drivers?limit=100${hubId ? `&hub_id=${hubId}` : ""}${includeInactive ? "" : "&is_active=true"}`,
   );
 
 export const getAllDrivers = (
@@ -477,7 +478,6 @@ export const updateDriver = (
 
 export const deactivateDriver = (id: string): Promise<null> =>
   apiCall(`/catalog/drivers/${id}`, "DELETE");
-
 export const getHubs = (
   includeInactive = false,
 ): Promise<{ items: HubRef[] }> =>

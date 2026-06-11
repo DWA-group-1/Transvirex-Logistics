@@ -7,6 +7,8 @@ import {
   getCurrentRole,
   getHubs,
   getDrivers,
+  updateDriver,
+  deactivateDriver,
   type DriverRef,
   type HubRef,
 } from "../services/api";
@@ -179,36 +181,43 @@ function Register() {
   const [loading, setLoading] = useState(false);
   const [created, setCreated] = useState<CreatedCredentials | null>(null);
   const [hubs, setHubs] = useState<HubRef[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({
+    first_name: "",
+    last_name: "",
+    phone: "",
+    hub_id: "",
+  });
+  const [editOpen, setEditOpen] = useState(false);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [showInactive, setShowInactive] = useState(false);
 
   const isDriver = form.role === "driver";
   const currentRole = getCurrentRole();
 
   const loadDrivers = useCallback(async () => {
     setListError(null);
-
     try {
-      const res = await getDrivers();
+      const res = await getDrivers(undefined, showInactive);
       setDrivers(res.items);
     } catch (e: any) {
       setListError(e.message || "Failed to load workers");
     } finally {
       setLoadingList(false);
     }
-  }, []);
+  }, [showInactive]);
 
   useEffect(() => {
     loadDrivers();
   }, [loadDrivers]);
 
   useEffect(() => {
-    if (form.role === "driver" && hubs.length === 0) {
-      getHubs()
-        .then((h) => setHubs(h.items))
-        .catch(() => {
-          /* non-blocking */
-        });
-    }
-  }, [form.role, hubs.length]);
+    getHubs()
+      .then((h) => setHubs(h.items))
+      .catch(() => {});
+  }, []);
 
   if (currentRole !== "manager") {
     return (
@@ -301,6 +310,54 @@ function Register() {
     }
   };
 
+  const openEdit = (d: DriverRef) => {
+    setEditingId(d.id);
+    setEditForm({
+      first_name: d.first_name,
+      last_name: d.last_name,
+      phone: d.phone ?? "",
+      hub_id: d.hub_id ?? "",
+    });
+    setEditError(null);
+    setEditOpen(true);
+  };
+
+  const handleEditSubmit = async () => {
+    if (!editForm.first_name.trim() || !editForm.last_name.trim()) {
+      setEditError("First and last name are required.");
+      return;
+    }
+    setEditSubmitting(true);
+    setEditError(null);
+    try {
+      await updateDriver(editingId!, {
+        first_name: editForm.first_name.trim(),
+        last_name: editForm.last_name.trim(),
+        phone: editForm.phone.trim() || null,
+        hub_id: editForm.hub_id || null,
+      });
+      setEditOpen(false);
+      await loadDrivers();
+    } catch (e: any) {
+      setEditError(e.message || "Failed to update driver");
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
+  const toggleActive = async (d: DriverRef) => {
+    setBusyId(d.id);
+    try {
+      if (d.is_active) await deactivateDriver(d.id);
+      else await updateDriver(d.id, { is_active: true });
+      await loadDrivers();
+    } catch (e: any) {
+      setListError(e.message || "Failed to update driver");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   return (
     <div style={pageStyle}>
       <div style={pageHeaderRow}>
@@ -321,6 +378,25 @@ function Register() {
 
       {listError && <div style={errorBox}>{listError}</div>}
 
+      <label
+        style={{
+          display: "inline-flex",
+          gap: 6,
+          alignItems: "center",
+          margin: "8px 0 16px",
+          fontSize: 14,
+          cursor: "pointer",
+          color: "var(--font-color)",
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={showInactive}
+          onChange={(e) => setShowInactive(e.target.checked)}
+        />
+        Show inactive
+      </label>
+
       {loadingList ? (
         <p style={mutedText}>Loading…</p>
       ) : (
@@ -334,12 +410,18 @@ function Register() {
               <Th>Hub</Th>
               <Th>Role</Th>
               <Th>Status</Th>
+              <Th>Action</Th>
             </tr>
           </thead>
-
           <tbody>
             {drivers.map((driver) => (
-              <tr key={driver.id} style={tableRowStyle}>
+              <tr
+                key={driver.id}
+                style={{
+                  ...tableRowStyle,
+                  opacity: driver.is_active ? 1 : 0.55,
+                }}
+              >
                 <Td>{driver.reference}</Td>
                 <Td>
                   {driver.first_name} {driver.last_name}
@@ -349,12 +431,29 @@ function Register() {
                 <Td>{getHubLabel(driver.hub_id, hubs)}</Td>
                 <Td>Driver</Td>
                 <Td>{driver.is_active ? "Active" : "Inactive"}</Td>
+                <Td>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button style={linkBtn} onClick={() => openEdit(driver)}>
+                      Edit
+                    </button>
+                    <button
+                      style={driver.is_active ? dangerBtn : linkBtn}
+                      disabled={busyId === driver.id}
+                      onClick={() => toggleActive(driver)}
+                    >
+                      {busyId === driver.id
+                        ? "…"
+                        : driver.is_active
+                          ? "Deactivate"
+                          : "Reactivate"}
+                    </button>
+                  </div>
+                </Td>
               </tr>
             ))}
-
             {drivers.length === 0 && (
               <tr>
-                <Td colSpan={7}>No workers yet. Create one to get started.</Td>
+                <Td colSpan={8}>No workers yet. Create one to get started.</Td>
               </tr>
             )}
           </tbody>
@@ -471,7 +570,9 @@ function Register() {
                 style={eyeButton}
                 title={showPassword ? "Hide password" : "Show password"}
               >
-                <i className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"}`} />
+                <i
+                  className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"}`}
+                />
               </button>
             </div>
 
@@ -485,6 +586,60 @@ function Register() {
               ✨ Generate
             </button>
           </div>
+        </Labeled>
+      </FormModal>
+
+      <FormModal
+        open={editOpen}
+        title="Edit driver"
+        onClose={() => setEditOpen(false)}
+        onSubmit={handleEditSubmit}
+        submitting={editSubmitting}
+        submitLabel="Save changes"
+        error={editError}
+      >
+        <Labeled label="First name *">
+          <input
+            style={themedInput}
+            value={editForm.first_name}
+            onChange={(e) =>
+              setEditForm({ ...editForm, first_name: e.target.value })
+            }
+          />
+        </Labeled>
+        <Labeled label="Last name *">
+          <input
+            style={themedInput}
+            value={editForm.last_name}
+            onChange={(e) =>
+              setEditForm({ ...editForm, last_name: e.target.value })
+            }
+          />
+        </Labeled>
+        <Labeled label="Phone">
+          <input
+            style={themedInput}
+            value={editForm.phone}
+            onChange={(e) =>
+              setEditForm({ ...editForm, phone: e.target.value })
+            }
+          />
+        </Labeled>
+        <Labeled label="Hub">
+          <select
+            style={themedInput}
+            value={editForm.hub_id}
+            onChange={(e) =>
+              setEditForm({ ...editForm, hub_id: e.target.value })
+            }
+          >
+            <option value="">Unassigned</option>
+            {hubs.map((h) => (
+              <option key={h.id} value={h.id}>
+                {h.code} — {h.name}
+              </option>
+            ))}
+          </select>
         </Labeled>
       </FormModal>
 
@@ -525,22 +680,9 @@ const centerContainer: React.CSSProperties = {
   color: "var(--font-color)",
 };
 
-const panelStyle: React.CSSProperties = {
-  background: "color-mix(in srgb, var(--selected-color) 55%, transparent)",
-  border: "1px solid color-mix(in srgb, var(--font-color) 16%, transparent)",
-  color: "var(--font-color)",
-  padding: 24,
-  borderRadius: 16,
-};
-
 const mutedText: React.CSSProperties = {
   color: "color-mix(in srgb, var(--font-color) 65%, transparent)",
   margin: "4px 0 0",
-};
-
-const helperText: React.CSSProperties = {
-  color: "color-mix(in srgb, var(--font-color) 68%, transparent)",
-  fontSize: 13,
 };
 
 const errorBox: React.CSSProperties = {
@@ -646,6 +788,22 @@ const credentialsBox: React.CSSProperties = {
 
 const hrStyle: React.CSSProperties = {
   borderColor: "color-mix(in srgb, var(--font-color) 18%, transparent)",
+};
+
+const linkBtn: React.CSSProperties = {
+  background: "none",
+  border: "1px solid color-mix(in srgb, var(--font-color) 25%, transparent)",
+  color: "var(--font-color)",
+  borderRadius: 6,
+  padding: "4px 10px",
+  fontSize: 13,
+  cursor: "pointer",
+};
+
+const dangerBtn: React.CSSProperties = {
+  ...linkBtn,
+  color: "#ef4444",
+  borderColor: "color-mix(in srgb, #ef4444 40%, transparent)",
 };
 
 export default Register;
