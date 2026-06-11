@@ -15,8 +15,10 @@ import {
   pageHeaderRow,
   newButton,
   SortableTh,
+  SearchBar,
 } from "../components/FormBits";
 import { useSort } from "../hooks/useSort";
+import { useSearch } from "../hooks/useSearch";
 
 const EMPTY = {
   name: "",
@@ -142,8 +144,21 @@ export default function Customers() {
     }),
     [],
   );
+
+  const searchable = useMemo(
+    () => (c: CustomerRef) => [
+      c.reference,
+      c.name,
+      c.contact_name,
+      c.email,
+      c.address,
+      c.city,
+    ],
+    [],
+  );
+  const { query, setQuery, filtered } = useSearch(customers, searchable);
   const { sorted, sortKey, sortDir, toggle } = useSort(
-    customers,
+    filtered,
     sortAccessors,
     { key: "name" },
   );
@@ -172,6 +187,12 @@ export default function Customers() {
         />
         Show inactive
       </label>
+
+      <SearchBar
+        value={query}
+        onChange={setQuery}
+        placeholder="Search drivers…"
+      />
 
       {listError && <div style={errorBox}>{listError}</div>}
 

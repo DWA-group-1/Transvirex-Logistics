@@ -21,8 +21,10 @@ import {
   SortableTh,
   pageHeaderRow,
   newButton,
+  SearchBar,
 } from "../components/FormBits";
 import { useSort } from "../hooks/useSort";
+import { useSearch } from "../hooks/useSearch";
 
 type Role = "driver" | "dispatcher" | "billing" | "manager";
 
@@ -239,9 +241,23 @@ function Register() {
     }),
     [hubs],
   );
-  const { sorted, sortKey, sortDir, toggle } = useSort(drivers, sortAccessors, {
-    key: "name",
-  });
+
+  const searchable = useMemo(
+    () => (d: DriverRef) => [
+      d.reference,
+      `${d.first_name} ${d.last_name}`,
+      d.email,
+      d.phone,
+      getHubLabel(d.hub_id, hubs),
+    ],
+    [hubs],
+  );
+  const { query, setQuery, filtered } = useSearch(drivers, searchable);
+  const { sorted, sortKey, sortDir, toggle } = useSort(
+    filtered,
+    sortAccessors,
+    { key: "name" },
+  );
 
   if (currentRole !== "manager") {
     return (
@@ -408,6 +424,12 @@ function Register() {
         />
         Show inactive
       </label>
+
+      <SearchBar
+        value={query}
+        onChange={setQuery}
+        placeholder="Search driver…"
+      />
 
       {listError && <div style={errorBox}>{listError}</div>}
 

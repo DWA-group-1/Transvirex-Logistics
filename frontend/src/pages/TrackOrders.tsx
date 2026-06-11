@@ -10,6 +10,8 @@ import {
   type DriverRef,
 } from "../services/api";
 import { useSort } from "../hooks/useSort";
+import { useSearch } from "../hooks/useSearch";
+import { SearchBar } from "../components/FormBits";
 
 const API_BASE_URL = "http://localhost:8000";
 
@@ -322,10 +324,21 @@ export default function TrackOrders() {
     }),
     [],
   );
-  const { sorted, sortKey, sortDir, toggle } = useSort(
-    deliveries,
-    sortAccessors,
+
+  const searchable = useMemo(
+    () => (d: DeliveryEnriched) => [
+      d.reference,
+      d.id,
+      d.customer?.name,
+      d.delivery_address,
+      d.driver ? `${d.driver.first_name} ${d.driver.last_name}` : null,
+      d.status,
+      d.priority,
+    ],
+    [],
   );
+  const { query, setQuery, filtered } = useSearch(deliveries, searchable);
+  const { sorted, sortKey, sortDir, toggle } = useSort(filtered, sortAccessors);
 
   const total = deliveries.length;
   const completed = deliveries.filter((d) => d.status === "delivered").length;
@@ -482,6 +495,12 @@ export default function TrackOrders() {
         </div>
 
         <h2 style={{ marginBottom: 12 }}>Active Orders</h2>
+
+        <SearchBar
+          value={query}
+          onChange={setQuery}
+          placeholder="Search order…"
+        />
 
         {/* Desktop table */}
         <div className="table-scroll desktop-table">
