@@ -117,7 +117,7 @@ export default function PlanRoutes() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 340px), 1fr))",
           gap: 16,
         }}
       >
@@ -130,10 +130,12 @@ export default function PlanRoutes() {
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
+                  gap: 8,
+                  flexWrap: "wrap",
                 }}
               >
                 <span style={{ fontFamily: "monospace", fontWeight: 600 }}>
-                  {d.id.slice(0, 8)}
+                  {d.reference}
                 </span>
                 {d.has_open_incident && (
                   <span
@@ -178,7 +180,7 @@ export default function PlanRoutes() {
                 )}
               </div>
 
-              <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {action && (
                   <button
                     onClick={() => advance(d)}
@@ -203,7 +205,8 @@ export default function PlanRoutes() {
       {done.length > 0 && (
         <>
           <h2 style={{ marginTop: 32 }}>Completed ({done.length})</h2>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <div style={tableWrapper}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 680 }}>
             <thead>
               <tr
                 style={{
@@ -223,7 +226,7 @@ export default function PlanRoutes() {
                 <tr key={d.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
                   <td style={td}>
                     <span style={{ fontFamily: "monospace" }}>
-                      {d.id.slice(0, 8)}
+                      {d.reference}
                     </span>
                   </td>
                   <td style={td}>{d.customer?.name ?? "—"}</td>
@@ -233,6 +236,7 @@ export default function PlanRoutes() {
               ))}
             </tbody>
           </table>
+        </div>
         </>
       )}
 
@@ -376,6 +380,7 @@ const primaryBtn: React.CSSProperties = {
   border: "none",
   borderRadius: 6,
   padding: "9px 14px",
+  flex: "1 1 150px",
   fontWeight: 600,
   cursor: "pointer",
 };
@@ -388,6 +393,12 @@ const secondaryBtn: React.CSSProperties = {
   padding: "9px 14px",
   fontWeight: 600,
   cursor: "pointer",
+};
+
+
+const tableWrapper: React.CSSProperties = {
+  width: "100%",
+  overflowX: "auto",
 };
 
 const th: React.CSSProperties = {
