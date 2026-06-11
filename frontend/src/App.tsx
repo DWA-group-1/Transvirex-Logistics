@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
 import Home from "./pages/Home";
 import Login from "./pages/login";
 import Register from "./pages/register";
@@ -29,6 +30,7 @@ function ProtectedLayout({
     <ProtectedRoute>
       <Navbar isDark={isDark} onToggleTheme={onToggleTheme} />
       <Outlet />
+      <Footer />
     </ProtectedRoute>
   );
 }
