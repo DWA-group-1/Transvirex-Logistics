@@ -83,7 +83,7 @@ function App() {
           <Route
             path="/plan-routes"
             element={
-              <ProtectedRoute allowedRoles={["driver", "manager"]}>
+              <ProtectedRoute allowedRoles={["driver"]}>
                 <PlanRoutes />
               </ProtectedRoute>
             }
