@@ -113,7 +113,7 @@ export default function NotificationBell() {
           ) : (
             notifications.map((n) => (
               <div
-                key={n.id}
+                key={n.reference}
                 style={{
                   padding: "10px",
                   borderRadius: 8,

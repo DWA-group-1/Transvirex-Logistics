@@ -11,6 +11,20 @@ from .models import Notification
 logger = logging.getLogger(__name__)
 
 
+def _delivery_label(data: dict) -> str:
+    """Human-readable delivery label: the reference if present, else a short id.
+
+    Guards against events that don't carry `reference` (older events, or a
+    producer that hasn't been updated) so a missing field can never crash the
+    handler and stall the stream.
+    """
+    ref = data.get("reference")
+    if ref:
+        return ref
+    delivery_id = data.get("delivery_id", "")
+    return f"#{delivery_id[:8]}" if delivery_id else "#unknown"
+
+
 async def _persist_and_fanout(
     db: AsyncSession,
     *,
@@ -58,6 +72,8 @@ async def handle_delivery_assigned(enveloppe: dict) -> None:
             data.get("delivery_id"),
         )
         return
+
+    label = _delivery_label(data)
     async with db.SessionMaker() as session:
         await _persist_and_fanout(
             session,
@@ -65,13 +81,17 @@ async def handle_delivery_assigned(enveloppe: dict) -> None:
             target_role=None,
             type_="new_mission",
             title="New mission assigned",
-            message=f"Delivery #{data['delivery_id']} was assigned to you.",
-            payload={"delivery_id": data["delivery_id"]},
+            message=f"Delivery {label} was assigned to you.",
+            payload={
+                "delivery_id": data.get("delivery_id"),
+                "reference": data.get("reference"),
+            },
         )
 
 
 async def handle_incident_declared(enveloppe: dict) -> None:
     data = enveloppe["data"]
+    label = _delivery_label(data)
     async with db.SessionMaker() as session:
         await _persist_and_fanout(
             session,
@@ -79,7 +99,7 @@ async def handle_incident_declared(enveloppe: dict) -> None:
             target_role="dispatcher",
             type_="incident_declared",
             title="Incident declared",
-            message=f"Incident on the delivery #{data['delivery_id']}",
+            message=f"Incident on delivery {label}",
             payload=data,
         )
 

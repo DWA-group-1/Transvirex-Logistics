@@ -238,6 +238,7 @@ async def create_delivery(
         "delivery.created",
         {
             "delivery_id": str(delivery.id),
+            "reference": delivery.reference,
             "customer_id": str(delivery.customer_id),
             "hub_id": str(delivery.hub_id),
         },
@@ -260,6 +261,7 @@ async def create_delivery(
             "delivery.assigned",
             {
                 "delivery_id": str(delivery.id),
+                "reference": delivery.reference,
                 "driver_id": str(delivery.assigned_driver_id),
                 "driver_auth_user_id": auth_user_id,
             },
@@ -308,6 +310,7 @@ async def assign_driver(
         "delivery.assigned",
         {
             "delivery_id": str(delivery.id),
+            "reference": delivery.reference,
             "driver_id": str(delivery.assigned_driver_id),
             "driver_auth_user_id": auth_user_id,
         },
@@ -356,6 +359,7 @@ async def _transition(
         event_type,
         {
             "delivery_id": str(delivery.id),
+            "reference": delivery.reference,
             "customer_id": str(delivery.customer_id),
             "driver_id": (
                 str(delivery.assigned_driver_id)
@@ -473,5 +477,9 @@ async def cancel(
     await db.commit()
     await db.refresh(delivery)
 
-    await _publish(request, "delivery.cancelled", {"delivery_id": str(delivery.id)})
+    await _publish(
+        request,
+        "delivery.cancelled",
+        {"delivery_id": str(delivery.id), "reference": delivery.reference},
+    )
     return delivery
