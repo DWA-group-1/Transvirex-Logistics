@@ -23,7 +23,7 @@ const allNavItems = [
     label: "Plan Routes",
     icon: "bi-map",
     path: "/plan-routes",
-    roles: ["driver", "manager"],
+    roles: ["driver"],
   },
   {
     label: "Invoices",
