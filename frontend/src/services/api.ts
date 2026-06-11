@@ -367,31 +367,34 @@ export const refreshAccessToken = async (): Promise<string> => {
   return data.access_token;
 };
 
-export async function changePassword(
+export const changePassword = async (
   newPassword: string,
   confirmPassword: string,
-) {
-  const token = localStorage.getItem("access_token");
+  currentPassword?: string,
+): Promise<{ message: string; must_change_password: boolean }> => {
+  const token = getAuthToken();
+  if (!token) throw new Error("No authentication token found");
 
-  const res = await fetch(`${API_BASE_URL}/auth/change-password`, {
+  const response = await fetch(`${API_BASE_URL}/auth/change-password`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({
+      current_password: currentPassword || null,
       new_password: newPassword,
       confirm_password: confirmPassword,
     }),
   });
 
-  if (!res.ok) {
-    const data = await res.json().catch(() => null);
-    throw new Error(data?.detail || "Failed to change password.");
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || "Failed to change password");
   }
 
-  return res.json();
-}
+  return response.json();
+};
 
 export const getDeliveries = async (params?: {
   status?: DeliveryStatus;
