@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from transvirex_common.database import get_db
 from transvirex_common.deps import require_role
+from transvirex_common.references import next_code
 
 from ..models import Hub
 from ..schemas import HubCreate, HubList, HubOut, HubUpdate
@@ -80,15 +81,8 @@ async def create_hub(
     db: Annotated[AsyncSession, Depends(get_db)],
     _: Annotated[str, Depends(require_role("manager"))],
 ):
-    existing = await db.execute(select(Hub).where(Hub.code == payload.code))
-    if existing.scalar_one_or_none() is not None:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            f"A hub with code '{payload.code}' already exists",
-        )
-
     hub = Hub(
-        code=payload.code,
+        code=await next_code(db, "hub", "HUB"),
         name=payload.name,
         address=payload.address,
         city=payload.city,

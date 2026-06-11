@@ -45,7 +45,6 @@ class DriverList(BaseModel):
 
 
 class HubCreate(BaseModel):
-    code: str = Field(min_length=1, max_length=20)
     name: str = Field(min_length=1, max_length=200)
     address: str = Field(min_length=1)
     city: str = Field(min_length=1, max_length=100)

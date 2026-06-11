@@ -10,7 +10,6 @@ import FormModal from "../components/FormModal";
 import { Labeled, inputStyle, newButton } from "../components/FormBits";
 
 const EMPTY = {
-  code: "",
   name: "",
   address: "",
   city: "",
@@ -57,7 +56,6 @@ export default function Hubs() {
   function openEdit(h: HubRef) {
     setEditingId(h.id);
     setForm({
-      code: h.code,
       name: h.name,
       address: h.address,
       city: h.city ?? "",
@@ -70,7 +68,6 @@ export default function Hubs() {
 
   async function handleSubmit() {
     if (
-      !form.code.trim() ||
       !form.name.trim() ||
       !form.address.trim() ||
       !form.city.trim() ||
@@ -82,7 +79,6 @@ export default function Hubs() {
     setSubmitting(true);
     setFormError(null);
     const payload = {
-      code: form.code.trim(),
       name: form.name.trim(),
       address: form.address.trim(),
       city: form.city.trim(),
@@ -364,15 +360,6 @@ export default function Hubs() {
         submitLabel="Create hub"
         error={formError}
       >
-        <Labeled label="Code *">
-          <input
-            style={themedInput}
-            value={form.code}
-            onChange={(e) => setForm({ ...form, code: e.target.value })}
-            placeholder="PAR-01"
-          />
-        </Labeled>
-
         <Labeled label="Name *">
           <input
             style={themedInput}
