@@ -70,11 +70,12 @@ interface CreatedCredentials {
 function CredentialsScreen({
   credentials,
   onAddAnother,
+  onBackToWorkers,
 }: {
   credentials: CreatedCredentials;
   onAddAnother: () => void;
+  onBackToWorkers: () => void;
 }) {
-  const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
 
   const loginBlock = `Transvirex Logistics — Login Credentials\n\nEmail:    ${credentials.email}\nPassword: ${credentials.password}\nRole:     ${credentials.role}\n\nThis password is temporary. You will be asked to change it on first login.`;
@@ -86,59 +87,61 @@ function CredentialsScreen({
   };
 
   return (
-    <Container
-      className="d-flex align-items-center justify-content-center"
-      style={centerContainer}
-    >
-      <div className="container-fluid">
-        <h4 className="mb-4 fw-bold" style={{ color: "var(--font-color)" }}>
-          Account created
-        </h4>
+    <div style={modalOverlay}>
+      <div style={modalCard}>
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <h4 className="fw-bold m-0" style={{ color: "var(--font-color)" }}>
+            Account created
+          </h4>
 
-        <div style={panelStyle}>
-          <Alert variant="warning" className="mb-4">
-            <i className="bi bi-exclamation-triangle-fill me-2" />
-            These credentials are shown <strong>one time only</strong>. Copy
-            them before leaving this screen.
-          </Alert>
+          <button
+            type="button"
+            className="btn-close"
+            aria-label="Close"
+            onClick={onBackToWorkers}
+          />
+        </div>
 
-          <div style={credentialsBox}>
-            <CredentialItem label="Email" value={credentials.email} />
-            <hr style={hrStyle} />
-            <CredentialItem
-              label="Temporary password"
-              value={credentials.password}
-            />
-            <hr style={hrStyle} />
-            <CredentialItem label="Role" value={credentials.role} capitalize />
-          </div>
+        <Alert variant="warning" className="mb-4">
+          <i className="bi bi-exclamation-triangle-fill me-2" />
+          These credentials are shown <strong>one time only</strong>. Copy them
+          before leaving this screen.
+        </Alert>
 
-          <p style={mutedText}>
-            The worker must change this password on their first login.
-          </p>
+        <div style={credentialsBox}>
+          <CredentialItem label="Email" value={credentials.email} />
+          <hr style={hrStyle} />
 
-          <div className="d-flex flex-column gap-3">
-            <Button variant="primary" size="lg" onClick={handleCopy}>
-              <i className="bi bi-clipboard me-2" />
-              {copied ? "Copied!" : "Copy login info"}
-            </Button>
+          <CredentialItem
+            label="Temporary password"
+            value={credentials.password}
+          />
+          <hr style={hrStyle} />
 
-            <Button variant="outline-primary" size="lg" onClick={onAddAnother}>
-              <i className="bi bi-person-plus me-2" />
-              Add another worker
-            </Button>
+          <CredentialItem label="Role" value={credentials.role} capitalize />
+        </div>
 
-            <Button
-              variant="secondary"
-              size="lg"
-              onClick={() => navigate("/register")}
-            >
-              Back to workers
-            </Button>
-          </div>
+        <p style={mutedText}>
+          The worker must change this password on their first login.
+        </p>
+
+        <div className="d-flex flex-column gap-3">
+          <Button variant="primary" size="lg" onClick={handleCopy}>
+            <i className="bi bi-clipboard me-2" />
+            {copied ? "Copied!" : "Copy login info"}
+          </Button>
+
+          <Button variant="outline-primary" size="lg" onClick={onAddAnother}>
+            <i className="bi bi-person-plus me-2" />
+            Add another worker
+          </Button>
+
+          <Button variant="secondary" size="lg" onClick={onBackToWorkers}>
+            Back to workers
+          </Button>
         </div>
       </div>
-    </Container>
+    </div>
   );
 }
 
@@ -223,20 +226,6 @@ function Register() {
           </Button>
         </div>
       </Container>
-    );
-  }
-
-  if (created) {
-    return (
-      <CredentialsScreen
-        credentials={created}
-        onAddAnother={() => {
-          setCreated(null);
-          setForm({ ...EMPTY_FORM });
-          setError(null);
-          setOpen(true);
-        }}
-      />
     );
   }
 
@@ -498,6 +487,23 @@ function Register() {
           </div>
         </Labeled>
       </FormModal>
+
+      {created && (
+        <CredentialsScreen
+          credentials={created}
+          onAddAnother={() => {
+            setCreated(null);
+            setForm({ ...EMPTY_FORM });
+            setError(null);
+            setOpen(true);
+          }}
+          onBackToWorkers={() => {
+            setCreated(null);
+            setForm({ ...EMPTY_FORM });
+            setError(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -603,6 +609,27 @@ const eyeButton: React.CSSProperties = {
   color: "var(--font-color)",
   cursor: "pointer",
   padding: 0,
+};
+
+const modalOverlay: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  zIndex: 1050,
+  background: "rgba(0, 0, 0, 0.35)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: 16,
+};
+
+const modalCard: React.CSSProperties = {
+  width: "100%",
+  maxWidth: 430,
+  background: "var(--bg-color)",
+  color: "var(--font-color)",
+  borderRadius: 12,
+  padding: 24,
+  boxShadow: "0 24px 60px rgba(0, 0, 0, 0.25)",
 };
 
 const credentialsBox: React.CSSProperties = {
