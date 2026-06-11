@@ -484,12 +484,11 @@ export const getHubs = (
   apiCall(`/catalog/hubs${includeInactive ? "" : "?is_active=true"}`);
 
 export const createHub = async (payload: {
-  code: string;
   name: string;
   address: string;
   city: string;
   zip_code: string;
-  capacity?: number | null;
+  capacity: number | null;
 }): Promise<HubRef> => apiCall("/catalog/hubs", "POST", payload);
 
 export const updateHub = (

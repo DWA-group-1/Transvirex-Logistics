@@ -24,3 +24,24 @@ async def next_reference(
     result = await session.execute(_BUMP, {"entity": entity, "year": y})
     seq = result.scalar_one()
     return f"{prefix}-{y}-{seq:0{width}d}"
+
+
+async def next_code(
+    session: AsyncSession,
+    entity: str,
+    prefix: str,
+    *,
+    width: int = 3,
+) -> str:
+    result = await session.execute(
+        text("""
+            INSERT INTO counters (entity, year, last_value)
+            VALUES (:entity, 0, 1)
+            ON CONFLICT (entity, year)
+            DO UPDATE SET last_value = counters.last_value + 1
+            RETURNING last_value
+        """),
+        {"entity": entity},
+    )
+    seq = result.scalar_one()
+    return f"{prefix}{seq:0{width}d}"
