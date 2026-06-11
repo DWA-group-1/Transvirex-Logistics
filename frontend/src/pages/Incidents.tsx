@@ -308,3 +308,4 @@ function badgeStyle(bg: string, color: string): React.CSSProperties {
     fontWeight: 600,
   };
 }
+
