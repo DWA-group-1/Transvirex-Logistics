@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Awaitable, Callable
 
 import redis.asyncio as redis
-from redis.exceptions import ResponseError
+from redis import exceptions as redis_exc
 
 logger = logging.getLogger(__name__)
 
@@ -24,11 +24,18 @@ class EventBus:
         block_ms: int = 5000,
         batch_size: int = 10,
     ):
-        self._redis = redis.from_url(redis_url, decode_responses=True)
+        self._block_ms = block_ms
+        self._redis = redis.from_url(
+            redis_url,
+            decode_responses=True,
+            socket_timeout=block_ms / 1000
+            + 5,  # must exceed BLOCK, else the read races it
+            socket_keepalive=True,
+            health_check_interval=30,
+        )
         self._producer = producer_name
         self._group = consumer_group or producer_name
         self._consumer = consumer_name or socket.gethostname()
-        self._block_ms = block_ms
         self._batch_size = batch_size
 
         self._handlers: dict[str, list[EventHandler]] = {}
@@ -56,7 +63,7 @@ class EventBus:
 
     async def start(self) -> None:
         if not self._handlers:
-            logger.info("no handlers registeres, skipping start")
+            logger.info("no handlers registered, skipping start")
             return
 
         for stream in self._handlers.keys():
@@ -95,7 +102,7 @@ class EventBus:
                 "consumer group created",
                 extra={"stream": stream, "group": self._group},
             )
-        except ResponseError as e:
+        except redis_exc.ResponseError as e:
             if "BUSYGROUP" in str(e):
                 pass
             else:
@@ -113,6 +120,12 @@ class EventBus:
                     count=self._batch_size,
                     block=self._block_ms,
                 )
+            except (redis_exc.TimeoutError, asyncio.TimeoutError):
+                continue
+            except redis_exc.ConnectionError:
+                logger.warning("redis connection lost, retrying in 1s")
+                await asyncio.sleep(1)
+                continue
             except Exception:
                 logger.exception("xreadgroup failed, retrying in 1s")
                 await asyncio.sleep(1)
@@ -139,11 +152,8 @@ class EventBus:
             envelope = json.loads(raw)
         except json.JSONDecodeError:
             logger.warning(
-                "event handler failed",
-                extra={
-                    "stream": stream,
-                    "entry_id": entry_id,
-                },
+                "malformed envelope, not valid JSON, skipping",
+                extra={"stream": stream, "entry_id": entry_id},
             )
             await self._redis.xack(stream, self._group, entry_id)
             return

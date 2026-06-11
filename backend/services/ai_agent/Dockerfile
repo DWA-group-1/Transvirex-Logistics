@@ -5,14 +5,23 @@ RUN pip install --no-cache-dir uv
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
     PATH="/opt/venv/bin:$PATH"
 
-WORKDIR /app
+WORKDIR /workspace
 
-COPY services/ai_agent/pyproject.toml uv.lock ./
+COPY pyproject.toml uv.lock ./
 
-RUN uv sync --frozen
+COPY packages/common ./packages/common
 
-COPY services/ai_agent/app ./app
+COPY services/ai_agent/pyproject.toml ./services/ai_agent/pyproject.toml
+
+COPY services/ai_agent/app ./services/ai_agent/app
+
+RUN uv sync --frozen --package ai_agent
+
+COPY services/ai_agent/app ./services/ai_agent/app
+
+WORKDIR /workspace/services/ai_agent
 
 EXPOSE 8000
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+

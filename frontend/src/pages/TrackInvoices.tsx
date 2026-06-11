@@ -1,55 +1,205 @@
-import { useState } from "react";
-import { Badge, Button, Container, Table } from "react-bootstrap";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Alert,
+  Badge,
+  Button,
+  Container,
+  Spinner,
+  Table,
+} from "react-bootstrap";
+import { getAuthToken } from "../services/api";
 
-const sampleInvoices = [
-  {
-    id: "INV-001",
-    deliveryId: "DLV-2024-001",
-    driverName: "John Smith",
-    amount: 150.0,
-    status: "Paid",
-    dueDate: "2024-05-20",
-    paidDate: "2024-05-18",
-  },
-  {
-    id: "INV-002",
-    deliveryId: "DLV-2024-002",
-    driverName: "Jane Doe",
-    amount: 200.0,
-    status: "Pending",
-    dueDate: "2024-05-25",
-    paidDate: null,
-  },
-  {
-    id: "INV-003",
-    deliveryId: "DLV-2024-003",
-    driverName: "Mike Johnson",
-    amount: 175.5,
-    status: "Overdue",
-    dueDate: "2024-05-10",
-    paidDate: null,
-  },
-];
+type InvoiceStatus = "pending" | "paid";
+
+type InvoiceLine = {
+  id: string;
+  delivery_id: string;
+  amount: string;
+  description: string;
+};
+
+type Invoice = {
+  id: string;
+  number: string;
+  customer_id: string;
+  invoice_date: string;
+  due_date: string;
+  period_start: string;
+  period_end: string;
+  total_amount: string;
+  delivery_count: number;
+  status: InvoiceStatus;
+  payment_date: string | null;
+  lines: InvoiceLine[];
+};
 
 function TrackInvoices() {
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [filterStatus, setFilterStatus] = useState("All");
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [payingInvoiceId, setPayingInvoiceId] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  const filteredInvoices =
-    filterStatus === "All"
-      ? sampleInvoices
-      : sampleInvoices.filter((inv) => inv.status === filterStatus);
+  const fetchInvoices = async () => {
+    try {
+      setLoading(true);
+      setError("");
 
-  const totalPaid = sampleInvoices
-    .filter((inv) => inv.status === "Paid")
-    .reduce((sum, inv) => sum + inv.amount, 0);
+      const token = getAuthToken();
 
-  const pending = sampleInvoices
-    .filter((inv) => inv.status === "Pending")
-    .reduce((sum, inv) => sum + inv.amount, 0);
+      if (!token) {
+        throw new Error("No access token found. Please log in again.");
+      }
 
-  const overdue = sampleInvoices
-    .filter((inv) => inv.status === "Overdue")
-    .reduce((sum, inv) => sum + inv.amount, 0);
+      const response = await fetch("http://localhost:8000/billing/invoices/", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const body = await response.text();
+        throw new Error(`Failed to load invoices: ${response.status} ${body}`);
+      }
+
+      const data: Invoice[] = await response.json();
+      setInvoices(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load invoices");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGenerateInvoices = async () => {
+    try {
+      setGenerating(true);
+      setError("");
+      setSuccess("");
+
+      const token = getAuthToken();
+
+      if (!token) {
+        throw new Error("No access token found. Please log in again.");
+      }
+
+      const year = new Date().getFullYear();
+
+      const response = await fetch(
+        "http://localhost:8000/billing/invoices/generate",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            period_start: `${year}-01-01T00:00:00Z`,
+            period_end: `${year}-12-31T23:59:59Z`,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const body = await response.text();
+        throw new Error(
+          `Failed to generate invoices: ${response.status} ${body}`,
+        );
+      }
+
+      const result = await response.json();
+
+      setSuccess(`Generated ${result.invoices_created} invoice(s).`);
+
+      await fetchInvoices();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to generate invoices",
+      );
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const markPaid = async (invoiceId: string) => {
+    try {
+      setPayingInvoiceId(invoiceId);
+      setError("");
+      setSuccess("");
+
+      const token = getAuthToken();
+
+      if (!token) {
+        throw new Error("No access token found. Please log in again.");
+      }
+
+      const response = await fetch(
+        `http://localhost:8000/billing/invoices/${invoiceId}/pay`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            payment_date: new Date().toISOString(),
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const body = await response.text();
+        throw new Error(
+          `Failed to mark invoice as paid: ${response.status} ${body}`,
+        );
+      }
+
+      setSuccess("Invoice marked as paid.");
+
+      await fetchInvoices();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to mark invoice as paid",
+      );
+    } finally {
+      setPayingInvoiceId(null);
+    }
+  };
+
+  useEffect(() => {
+    fetchInvoices();
+  }, []);
+
+  const displayStatus = (invoice: Invoice) => {
+    if (invoice.status === "paid") return "Paid";
+
+    if (new Date(invoice.due_date) < new Date()) {
+      return "Overdue";
+    }
+
+    return "Pending";
+  };
+
+  const filteredInvoices = useMemo(() => {
+    if (filterStatus === "All") return invoices;
+    return invoices.filter(
+      (invoice) => displayStatus(invoice) === filterStatus,
+    );
+  }, [invoices, filterStatus]);
+
+  const totalPaid = invoices
+    .filter((invoice) => invoice.status === "paid")
+    .reduce((sum, invoice) => sum + Number(invoice.total_amount), 0);
+
+  const pending = invoices
+    .filter((invoice) => displayStatus(invoice) === "Pending")
+    .reduce((sum, invoice) => sum + Number(invoice.total_amount), 0);
+
+  const overdue = invoices
+    .filter((invoice) => displayStatus(invoice) === "Overdue")
+    .reduce((sum, invoice) => sum + Number(invoice.total_amount), 0);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -64,8 +214,64 @@ function TrackInvoices() {
     }
   };
 
+  const formatDate = (date: string | null) => {
+    if (!date) return "-";
+    return new Date(date).toLocaleDateString();
+  };
+
   const handleExport = () => {
-    alert("Export feature coming soon!");
+    const rows = filteredInvoices.map((invoice) => ({
+      invoice_number: invoice.number,
+      customer_id: invoice.customer_id,
+      deliveries: invoice.delivery_count,
+      amount: Number(invoice.total_amount).toFixed(2),
+      status: displayStatus(invoice),
+      due_date: formatDate(invoice.due_date),
+      paid_date: formatDate(invoice.payment_date),
+    }));
+
+    const headers = [
+      "Invoice Number",
+      "Customer ID",
+      "Deliveries",
+      "Amount",
+      "Status",
+      "Due Date",
+      "Paid Date",
+    ];
+
+    const csvRows = [
+      headers.join(","),
+      ...rows.map((row) =>
+        [
+          row.invoice_number,
+          row.customer_id,
+          row.deliveries,
+          row.amount,
+          row.status,
+          row.due_date,
+          row.paid_date,
+        ]
+          .map((value) => `"${String(value).replace(/"/g, '""')}"`)
+          .join(","),
+      ),
+    ];
+
+    const blob = new Blob([csvRows.join("\n")], {
+      type: "text/csv;charset=utf-8;",
+    });
+
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `transvirex-invoices-${new Date().toISOString().slice(0, 10)}.csv`;
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -75,92 +281,126 @@ function TrackInvoices() {
         <p style={mutedText}>Manage billed and unbilled deliveries</p>
       </div>
 
+      {error && <Alert variant="danger">{error}</Alert>}
+      {success && <Alert variant="success">{success}</Alert>}
+
       <div className="mb-4 d-flex gap-2 flex-wrap">
-        <Button
-          variant={filterStatus === "All" ? "primary" : "outline-primary"}
-          onClick={() => setFilterStatus("All")}
-        >
-          All
-        </Button>
-
-        <Button
-          variant={filterStatus === "Paid" ? "success" : "outline-success"}
-          onClick={() => setFilterStatus("Paid")}
-        >
-          Paid
-        </Button>
-
-        <Button
-          variant={filterStatus === "Pending" ? "warning" : "outline-warning"}
-          onClick={() => setFilterStatus("Pending")}
-        >
-          Pending
-        </Button>
-
-        <Button
-          variant={filterStatus === "Overdue" ? "danger" : "outline-danger"}
-          onClick={() => setFilterStatus("Overdue")}
-        >
-          Overdue
-        </Button>
+        {["All", "Paid", "Pending", "Overdue"].map((status) => (
+          <Button
+            key={status}
+            variant={filterStatus === status ? "primary" : "outline-primary"}
+            onClick={() => setFilterStatus(status)}
+          >
+            {status}
+          </Button>
+        ))}
       </div>
 
-      <div className="mb-4">
+      <div className="mb-4 d-flex gap-2 flex-wrap">
+        <Button
+          variant="success"
+          onClick={handleGenerateInvoices}
+          disabled={generating}
+        >
+          {generating ? "Generating…" : "Generate Invoices"}
+        </Button>
+
         <Button variant="outline-secondary" onClick={handleExport}>
           <i className="bi bi-download me-2" />
           Export to CSV
         </Button>
+
+        <Button variant="outline-primary" onClick={fetchInvoices}>
+          Refresh
+        </Button>
       </div>
 
-      <div className="table-responsive">
-        <Table bordered hover style={tableStyle}>
-          <thead>
-            <tr style={tableHeaderStyle}>
-              <th style={th}>Invoice ID</th>
-              <th style={th}>Delivery ID</th>
-              <th style={th}>Driver</th>
-              <th style={th}>Amount</th>
-              <th style={th}>Status</th>
-              <th style={th}>Due Date</th>
-              <th style={th}>Paid Date</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {filteredInvoices.length === 0 ? (
-              <tr>
-                <td colSpan={7} style={emptyCellStyle}>
-                  No invoices found
-                </td>
+      {loading ? (
+        <div className="p-4">
+          <Spinner animation="border" />
+        </div>
+      ) : (
+        <div className="table-responsive">
+          <Table bordered hover style={tableStyle}>
+            <thead>
+              <tr style={tableHeaderStyle}>
+                <th style={th}>Invoice Number</th>
+                <th style={th}>Customer ID</th>
+                <th style={th}>Deliveries</th>
+                <th style={th}>Amount</th>
+                <th style={th}>Status</th>
+                <th style={th}>Due Date</th>
+                <th style={th}>Paid Date</th>
+                <th style={th}>Actions</th>
               </tr>
-            ) : (
-              filteredInvoices.map((invoice) => (
-                <tr key={invoice.id} style={tableRowStyle}>
-                  <td style={{ ...td, fontWeight: 700 }}>{invoice.id}</td>
-                  <td style={td}>{invoice.deliveryId}</td>
-                  <td style={td}>{invoice.driverName}</td>
-                  <td style={td}>${invoice.amount.toFixed(2)}</td>
-                  <td style={td}>{getStatusBadge(invoice.status)}</td>
-                  <td style={td}>{invoice.dueDate}</td>
-                  <td style={td}>{invoice.paidDate || "-"}</td>
+            </thead>
+
+            <tbody>
+              {filteredInvoices.length === 0 ? (
+                <tr>
+                  <td colSpan={8} style={emptyCellStyle}>
+                    No invoices found
+                  </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </Table>
-      </div>
+              ) : (
+                filteredInvoices.map((invoice) => {
+                  const status = displayStatus(invoice);
+
+                  return (
+                    <tr key={invoice.id} style={tableRowStyle}>
+                      <td style={{ ...td, fontWeight: 700 }}>
+                        {invoice.number}
+                      </td>
+                      <td style={td}>{invoice.customer_id}</td>
+                      <td style={td}>{invoice.delivery_count}</td>
+                      <td style={td}>
+                        €{Number(invoice.total_amount).toFixed(2)}
+                      </td>
+                      <td style={td}>{getStatusBadge(status)}</td>
+                      <td style={td}>{formatDate(invoice.due_date)}</td>
+                      <td style={td}>{formatDate(invoice.payment_date)}</td>
+                      <td style={td}>
+                        {invoice.status === "pending" ? (
+                          <Button
+                            size="sm"
+                            variant="success"
+                            disabled={payingInvoiceId === invoice.id}
+                            onClick={() => markPaid(invoice.id)}
+                          >
+                            {payingInvoiceId === invoice.id
+                              ? "Updating…"
+                              : "Mark Paid"}
+                          </Button>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </Table>
+        </div>
+      )}
 
       <div className="mt-4 row g-4">
-        <SummaryCard label="Total Invoices" value={sampleInvoices.length} />
-        <SummaryCard label="Total Paid" value={`$${totalPaid.toFixed(2)}`} />
-        <SummaryCard label="Pending" value={`$${pending.toFixed(2)}`} />
-        <SummaryCard label="Overdue" value={`$${overdue.toFixed(2)}`} />
+        <SummaryCard label="Total Invoices" value={invoices.length} />
+        <SummaryCard label="Total Paid" value={`€${totalPaid.toFixed(2)}`} />
+        <SummaryCard label="Pending" value={`€${pending.toFixed(2)}`} />
+        <SummaryCard label="Overdue" value={`€${overdue.toFixed(2)}`} />
       </div>
     </Container>
   );
 }
 
-function SummaryCard({ label, value }: { label: string; value: string | number }) {
+function SummaryCard({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
   return (
     <div className="col-md-3">
       <div style={summaryCardStyle}>

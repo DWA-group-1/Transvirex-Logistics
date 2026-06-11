@@ -13,14 +13,12 @@ COPY packages/common ./packages/common
 
 COPY services/delivery/pyproject.toml ./services/delivery/pyproject.toml
 
-RUN uv sync --frozen --package auth
+RUN uv sync --frozen --package delivery
 
-COPY services/delivery/app ./delivery/delivery/app
+COPY services/delivery/app ./services/delivery/app
 
-WORKDIR /workspace/delivery/delivery
+WORKDIR /workspace/services/delivery
 
 EXPOSE 8000
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
-
-

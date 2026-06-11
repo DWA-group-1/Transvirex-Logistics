@@ -1,5 +1,4 @@
 services:
-  # ─── Gateway ────────────────────────────────────────────────────────────────────────
   gateway:
     build: ./backend/gateway
     container_name: transvirex-gateway
@@ -8,6 +7,8 @@ services:
       GATEWAY_NOTIF_URL: http://notification:8000
       GATEWAY_CATALOG_URL: http://catalog:8000
       GATEWAY_DELIVERY_URL: http://delivery:8000
+      GATEWAY_BILLING_URL: http://billing:8000
+      GATEWAY_REPORTING_URL: http://reporting:8000
       GATEWAY_JWT_ALGORITHM: ${JWT_ALGORITHM}
       GATEWAY_CORS_ORIGINS: '["http://localhost:5173","http://localhost:4173"]'
     ports:
@@ -23,8 +24,11 @@ services:
         condition: service_healthy
       delivery:
         condition: service_healthy
+      billing:
+        condition: service_healthy
+      reporting:
+        condition: service_healthy
 
-  # ─── Redis ──────────────────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: transvirex-redis
@@ -37,7 +41,6 @@ services:
       timeout: 3s
       retries: 5
 
-  # ─── PostgreSQL - AuthDB ────────────────────────────────────────────────────────────
   auth_db:
     image: postgres:17-alpine
     container_name: transvirex-auth-db
@@ -53,7 +56,6 @@ services:
       timeout: 3s
       retries: 5
 
-  # ─── Auth Service ──────────────────────────────────────────────────────────
   auth:
     build:
       context: ./backend
@@ -82,7 +84,7 @@ services:
       start_period: 30s
     volumes:
       - ./backend/services/auth/:/workspace/services/auth:Z
-      - ./backend/packages/common/:/workspace/packages/common:Z
+      - ./backend/packages/common/:/workspace/packages/common:z
       - ./keys:/run/secrets/keys:ro,z
     command:
       [
@@ -99,7 +101,6 @@ services:
         /workspace/packages/common/src,
       ]
 
-  # ─── PostgreSQL - NotificationDB ──────────────────────────────────────────
   notification_db:
     image: postgres:17-alpine
     container_name: transvirex-notif-db
@@ -115,7 +116,6 @@ services:
       timeout: 3s
       retries: 5
 
-  # ─── Notification Service ─────────────────────────────────────────────────
   notification:
     build:
       context: ./backend
@@ -148,7 +148,7 @@ services:
       retries: 5
       start_period: 30s
     volumes:
-      - ./backend/services/notification/:/app:Z
+      - ./backend/services/notification/:/workspace/services/notification:Z
       - ./keys:/run/secrets/keys:ro,z
     command:
       [
@@ -163,7 +163,6 @@ services:
         "app",
       ]
 
-  # ─── PostgreSQL - CatalogDB ──────────────────────────────────────────
   catalog_db:
     image: postgres:17-alpine
     container_name: transvirex-catalog-db
@@ -179,7 +178,6 @@ services:
       timeout: 3s
       retries: 5
 
-  # ─── Catalog Service ─────────────────────────────────────────────────
   catalog:
     build:
       context: ./backend
@@ -212,7 +210,7 @@ services:
       retries: 5
       start_period: 30s
     volumes:
-      - ./backend/services/catalog/:/app:Z
+      - ./backend/services/catalog/:/workspace/services/catalog:Z
     command:
       [
         "uvicorn",
@@ -226,7 +224,6 @@ services:
         "app",
       ]
 
-  # ─── PostgreSQL - DeliveryDB ─────────────────────────────────────────────────
   delivery_db:
     image: postgres:17-alpine
     container_name: transvirex-delivery-db
@@ -243,7 +240,6 @@ services:
       timeout: 3s
       retries: 5
 
-  # ─── Delivery Service ─────────────────────────────────────────────────
   delivery:
     build:
       context: ./backend
@@ -273,7 +269,7 @@ services:
       retries: 5
       start_period: 30s
     volumes:
-      - ./backend/services/delivery/:/app:Z
+      - ./backend/services/delivery/:/workspace/services/delivery:Z
     command:
       [
         uvicorn,
@@ -287,6 +283,124 @@ services:
         app,
       ]
 
+  # ─── PostgreSQL - ReportingDB ────────────────────────────────────────────
+  reporting_db:
+    image: postgres:17-alpine
+    container_name: transvirex-reporting-db
+    environment:
+      POSTGRES_USER: ${REPORTING_DB_USER}
+      POSTGRES_PASSWORD: ${REPORTING_DB_PASSWORD}
+      POSTGRES_DB: reporting
+    volumes:
+      - reporting_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${REPORTING_DB_USER} -d reporting"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ─── Reporting Service ────────────────────────────────────────────────────
+  reporting:
+    build:
+      context: ./backend
+      dockerfile: services/reporting/Dockerfile
+    container_name: transvirex-reporting
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://${REPORTING_DB_USER}:${REPORTING_DB_PASSWORD}@reporting_db:5432/reporting
+      REDIS_URL: "redis://redis:6379"
+    depends_on:
+      reporting_db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health', timeout=2).status == 200 else 1)",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - ./backend/services/reporting/:/workspace/services/reporting:Z
+    command:
+      [
+        uvicorn,
+        app.main:app,
+        --host,
+        0.0.0.0,
+        --port,
+        "8000",
+        --reload,
+        --reload-dir,
+        /workspace/services/reporting/app,
+        --reload-dir,
+        /workspace/packages/common/src,
+      ]
+
+  # ─── Billing ──────────────────────────────────────────────────────────────
+  billing_db:
+    image: postgres:17-alpine
+    container_name: transvirex-billing-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${BILLING_DB_USER}
+      POSTGRES_PASSWORD: ${BILLING_DB_PASSWORD}
+      POSTGRES_DB: billing
+    volumes:
+      - billing_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${BILLING_DB_USER} -d billing"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  billing:
+    build:
+      context: ./backend
+      dockerfile: services/billing/Dockerfile
+    container_name: transvirex-billing
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://${BILLING_DB_USER}:${BILLING_DB_PASSWORD}@billing_db:5432/billing
+      REDIS_URL: "redis://redis:6379"
+    depends_on:
+      billing_db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health', timeout=2).status == 200 else 1)",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - ./backend/services/billing/:/workspace/services/billing:Z
+    command:
+      [
+        uvicorn,
+        app.main:app,
+        --host,
+        0.0.0.0,
+        --port,
+        "8000",
+        --reload,
+        --reload-dir,
+        /workspace/services/billing/app,
+        --reload-dir,
+        /workspace/packages/common/src,
+      ]
+
   # ─── Agent Service ─────────────────────────────────────────────────
   agent:
     build:
@@ -298,19 +412,17 @@ services:
       GATEWAY_URL: http://gateway:8000
       OLLAMA_URL: http://host.docker.internal:11434
       OLLAMA_MODEL: llama3.2:3b
-      JWT_ALGORITHM: ${JWT_ALGORITHM}
     ports:
       - "8007:8000"
     volumes:
-      - ./backend/services/ai_agent/:/app:Z
-      - ./keys:/run/secrets/keys:ro,z
+      - ./backend/services/ai_agent/:/workspace/services/ai_agent:Z
     depends_on:
       gateway:
         condition: service_started
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
-  # ─── Frontend ──────────────────────────────────────────────────────────────
+  # ─── Frontend ─────────────────────────────────────────────────
   frontend:
     profiles: ["prod"]
     build:
@@ -340,3 +452,5 @@ volumes:
   notif_pgdata:
   catalog_pgdata:
   delivery_pgdata:
+  billing_pgdata:
+  reporting_pgdata:

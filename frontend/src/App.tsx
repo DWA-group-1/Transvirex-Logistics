@@ -13,6 +13,8 @@ import Customers from "./pages/Customers.tsx";
 import Hubs from "./pages/Hubs.tsx";
 import Incidents from "./pages/Incidents.tsx";
 import AiAgent from "./pages/AiAgent.tsx";
+import Reports from "./pages/Reports.tsx";
+import NotFound from "./pages/NotFound.tsx";
 
 import "./App.css";
 
@@ -116,6 +118,15 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/reports"
+            element={
+              <ProtectedRoute allowedRoles={["manager", "dispatcher"]}>
+                <Reports />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
     </BrowserRouter>

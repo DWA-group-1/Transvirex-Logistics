@@ -15,11 +15,13 @@ export interface UserOut {
 
 export interface DriverRef {
   id: string;
+  reference: string;
   auth_user_id: string;
   email: string;
   first_name: string;
   last_name: string;
   phone: string | null;
+  hub_id: string | null;
   is_active: boolean;
 }
 
@@ -28,16 +30,21 @@ export interface HubRef {
   code: string;
   name: string;
   address: string;
+  city: string;
+  zip_code: string;
   capacity: number | null;
   is_active: boolean;
 }
 
 export interface CustomerRef {
   id: string;
+  reference: string;
   name: string;
   contact_name: string | null;
   email: string | null;
   address: string;
+  city: string;
+  zip_code: string;
   is_active: boolean;
 }
 
@@ -51,6 +58,7 @@ export type DeliveryStatus =
 
 export interface DeliveryEnriched {
   id: string;
+  reference: string;
   hub_id: string;
   customer_id: string;
   assigned_driver_id: string | null;
@@ -150,7 +158,8 @@ export const getValidToken = async (): Promise<string | null> => {
 
   try {
     const payload = decodeTokenPayload();
-    const isExpiredOrSoon = !payload?.exp || payload.exp * 1000 < Date.now() + 10_000;
+    const isExpiredOrSoon =
+      !payload?.exp || payload.exp * 1000 < Date.now() + 10_000;
     if (isExpiredOrSoon) {
       return await refreshAccessToken();
     }
@@ -440,8 +449,12 @@ export const declareIncident = (
   body: { type: string; description: string; severity?: string },
 ) => apiCall(`/delivery/deliveries/${deliveryId}/incidents`, "POST", body);
 
-export const getDrivers = async (): Promise<{ items: DriverRef[] }> =>
-  apiCall("/catalog/drivers?is_active=true&limit=100");
+export const getDrivers = async (
+  hubId?: string,
+): Promise<{ items: DriverRef[] }> =>
+  apiCall(
+    `/catalog/drivers?is_active=true&limit=100${hubId ? `&hub_id=${hubId}` : ""}`,
+  );
 
 export const getHubs = async (): Promise<{ items: HubRef[] }> =>
   apiCall("/catalog/hubs?is_active=true&limit=100");
@@ -454,12 +467,16 @@ export const createCustomer = async (payload: {
   contact_name?: string | null;
   email?: string | null;
   address: string;
+  city: string;
+  zip_code: string;
 }): Promise<CustomerRef> => apiCall("/catalog/customers", "POST", payload);
 
 export const createHub = async (payload: {
   code: string;
   name: string;
   address: string;
+  city: string;
+  zip_code: string;
   capacity?: number | null;
 }): Promise<HubRef> => apiCall("/catalog/hubs", "POST", payload);
 
@@ -493,4 +510,27 @@ export const createDriver = async (payload: {
   first_name: string;
   last_name: string;
   phone?: string | null;
+  hub_id?: string | null;
 }): Promise<DriverRef> => apiCall("/catalog/drivers", "POST", payload);
+
+export interface KpiValues {
+  period_month: string;
+  total_deliveries: number;
+  on_time_pct: number | null;
+  avg_delivery_time_h: number | null;
+  customer_satisfaction: number | null;
+  revenue: number;
+  active_drivers: number;
+  incidents_count: number;
+  source: string; // "live" | "computed" | "seeded"
+}
+
+export interface KpiTrend {
+  months: KpiValues[];
+}
+
+export const getCurrentKpis = (): Promise<KpiValues> =>
+  apiCall("/reporting/kpi/current");
+
+export const getKpiTrend = (months = 12): Promise<KpiTrend> =>
+  apiCall(`/reporting/kpi/trend?months=${months}`);

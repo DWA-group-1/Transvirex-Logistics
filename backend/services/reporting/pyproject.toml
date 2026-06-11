@@ -1,0 +1,20 @@
+[project]
+name = "reporting"
+version = "0.1.0"
+description = "Reporting/KPI service for Transvirex Logistics"
+requires-python = ">=3.13"
+dependencies = [
+    "alembic>=1.18.4",
+    "fastapi>=0.136.1",
+    "psycopg[binary]>=3.3.4",
+    "pydantic[email]>=2.13.4",
+    "pydantic-settings>=2.14.1",
+    "python-dotenv>=1.2.2",
+    "redis>=5.0",
+    "sqlalchemy>=2.0.49",
+    "uvicorn[standard]>=0.46.0",
+    "transvirex_common",
+]
+
+[dependency-groups]
+dev = ["pytest>=9.0.3", "ruff>=0.15.12"]

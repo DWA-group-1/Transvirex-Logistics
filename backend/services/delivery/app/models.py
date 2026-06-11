@@ -26,6 +26,8 @@ class Delivery(Base):
         PG_UUID(as_uuid=True), primary_key=True, default=uuid4
     )
 
+    reference: Mapped[str] = mapped_column(String, unique=True, index=True)
+
     # Cross-service references (Catalog) — no FK, different DB
     hub_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True), nullable=False, index=True
@@ -70,6 +72,13 @@ class Delivery(Base):
         onupdate=func.now(),
         nullable=False,
     )
+
+
+class Counter(Base):
+    __tablename__ = "counters"
+    entity: Mapped[str] = mapped_column(String, primary_key=True)
+    year: Mapped[int] = mapped_column(Integer, primary_key=True)
+    last_value: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
 
 class TrackingEvent(Base):
