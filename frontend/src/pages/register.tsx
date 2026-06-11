@@ -22,8 +22,6 @@ import {
 
 type Role = "driver" | "dispatcher" | "billing" | "manager";
 
-const [showPassword, setShowPassword] = useState(false);
-
 const ROLE_OPTIONS: { value: Role; label: string }[] = [
   { value: "driver", label: "Driver" },
   { value: "dispatcher", label: "Dispatcher" },
@@ -173,6 +171,7 @@ function Register() {
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ ...EMPTY_FORM });
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [created, setCreated] = useState<CreatedCredentials | null>(null);
@@ -483,7 +482,7 @@ function Register() {
                 style={eyeButton}
                 title={showPassword ? "Hide password" : "Show password"}
               >
-                <i className={`bi ${showPassword ? "bi bi-eye-slash" : "bi bi-eye"}`} />
+                <i className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"}`} />
               </button>
             </div>
 
@@ -592,6 +591,18 @@ const generateButton: React.CSSProperties = {
   fontWeight: 600,
   cursor: "pointer",
   whiteSpace: "nowrap",
+};
+
+const eyeButton: React.CSSProperties = {
+  position: "absolute",
+  right: 12,
+  top: "50%",
+  transform: "translateY(-50%)",
+  border: "none",
+  background: "transparent",
+  color: "var(--font-color)",
+  cursor: "pointer",
+  padding: 0,
 };
 
 const credentialsBox: React.CSSProperties = {
