@@ -50,4 +50,3 @@ class ChangePasswordRequest(BaseModel):
 
 class LoginResponse(TokenPair):
     must_change_password: bool
-

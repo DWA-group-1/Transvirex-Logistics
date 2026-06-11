@@ -237,4 +237,3 @@ async def proxy_ws(
 
         if websocket.client_state != WebSocketState.DISCONNECTED:
             await websocket.close(code=1011)
-
