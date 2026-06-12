@@ -1,13 +1,15 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { changePassword } from "../services/api";
 
 function ChangePassword() {
   const navigate = useNavigate();
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPw, setShowPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -28,9 +30,7 @@ function ChangePassword() {
     setLoading(true);
 
     try {
-      // TODO: replace this with your real API call
-      // await changePassword(newPassword);
-
+      await changePassword(newPassword, confirmPassword);
       navigate("/home");
     } catch (err: any) {
       setError(err.message || "Failed to change password.");
@@ -51,10 +51,12 @@ function ChangePassword() {
           align-items: center;
           justify-content: center;
           font-family: 'Poppins', sans-serif;
+          padding: 16px;
         }
 
         .glass-card {
-          width: 400px;
+          width: 100%;
+          max-width: 400px;
           background: color-mix(in srgb, var(--hover-color) 8%, transparent);
           border-radius: 10px;
           backdrop-filter: blur(10px);
@@ -172,6 +174,11 @@ function ChangePassword() {
           padding: 4px;
         }
 
+        .glass-pw-toggle:disabled {
+          cursor: not-allowed;
+          opacity: 0.6;
+        }
+
         .glass-submit {
           margin-top: 48px;
           width: 100%;
@@ -221,9 +228,10 @@ function ChangePassword() {
 
             <div className="glass-input-wrap">
               <i className="bi bi-lock glass-input-icon" aria-hidden="true" />
+
               <input
                 id="newPassword"
-                type={showPw ? "text" : "password"}
+                type={showNewPw ? "text" : "password"}
                 placeholder="New Password"
                 autoComplete="new-password"
                 value={newPassword}
@@ -235,11 +243,12 @@ function ChangePassword() {
               <button
                 type="button"
                 className="glass-pw-toggle"
-                onClick={() => setShowPw((p) => !p)}
-                aria-label={showPw ? "Hide password" : "Show password"}
+                onClick={() => setShowNewPw((p) => !p)}
+                disabled={loading}
+                aria-label={showNewPw ? "Hide password" : "Show password"}
               >
                 <i
-                  className={showPw ? "bi bi-eye-slash" : "bi bi-eye"}
+                  className={showNewPw ? "bi bi-eye-slash" : "bi bi-eye"}
                   aria-hidden="true"
                 />
               </button>
@@ -251,9 +260,10 @@ function ChangePassword() {
 
             <div className="glass-input-wrap">
               <i className="bi bi-lock glass-input-icon" aria-hidden="true" />
+
               <input
                 id="confirmPassword"
-                type={showPw ? "text" : "password"}
+                type={showConfirmPw ? "text" : "password"}
                 placeholder="Confirm Password"
                 autoComplete="new-password"
                 value={confirmPassword}
@@ -261,6 +271,21 @@ function ChangePassword() {
                 disabled={loading}
                 className="glass-input"
               />
+
+              <button
+                type="button"
+                className="glass-pw-toggle"
+                onClick={() => setShowConfirmPw((p) => !p)}
+                disabled={loading}
+                aria-label={
+                  showConfirmPw ? "Hide confirm password" : "Show confirm password"
+                }
+              >
+                <i
+                  className={showConfirmPw ? "bi bi-eye-slash" : "bi bi-eye"}
+                  aria-hidden="true"
+                />
+              </button>
             </div>
 
             <button type="submit" disabled={loading} className="glass-submit">
