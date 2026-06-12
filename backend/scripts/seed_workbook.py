@@ -19,6 +19,7 @@ Re-running creates duplicates / 409s on driver emails.
 
 import os
 import sys
+
 import httpx
 
 GATEWAY = os.getenv("GATEWAY_URL", "http://localhost:8000")
@@ -529,7 +530,7 @@ INCIDENTS = [
 
 
 def main() -> None:
-    client = httpx.Client(base_url=GATEWAY, timeout=30)
+    client = httpx.Client(base_url=GATEWAY, timeout=120)
 
     # ── 1. Login as admin ──────────────────────────────────────────────────
     r = client.post(
